@@ -1,0 +1,20 @@
+{
+  "project": "项目名称",
+  "branchName": "ralph/feature-name",
+  "description": "功能描述",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "故事标题",
+      "description": "作为用户，我想要...，以便...",
+      "acceptanceCriteria": [
+        "标准1",
+        "标准2",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
