@@ -1,0 +1,60 @@
+# Ralph Progress Log (v1)
+Started: 2026-05-08
+
+## Codebase Patterns
+- 测试用例基于 `case_muti_direction.c` 框架，调整为两个进程（send/recv）
+- 每个进程创建线程下发任务，线程一一对应（send thread-i 对应 recv thread-i）
+- 线程绑核：send 进程绑核 --send，其线程绑核 send+1, send+2, ...；recv 同理
+- 核号范围 [0, 607]
+- stride 参数范围：src_stride_len、dst_stride_len、stride_num 均为 0~4M
+- 通道类型由 --chn-type (-C) 控制，send/recv 进程分别选择独占/共享通道
+- 独占通道使用：sdma_alloc_chn + sdma_copy_data/sdma_wait_chn
+- 共享通道使用：sdma_init_chn + sdma_icopy_data/sdma_iwait_chn 
+
+## 2026-05-08 - US-001
+- 实现内容：创建 case9_mixed_scenario.c 框架
+- 修改文件：D:\Opencode\test_ralph\dev_v1\src\case9_mixed_scenario.c, ut_sdma.h, ut_sdma_main.c
+- **学习点：**
+  - 基于 case_muti_direction.c 框架，调整为两个进程（send/recv）
+  - 每个进程创建线程，线程一一对应
+  - 线程绑核逻辑：send+1, send+2, ...；recv+1, recv+2, ...
+  - 核号范围 [0, 607]
+---
+
+## 2026-05-08 - US-002
+- 实现内容：扩展 struct sdma_test_input 添加5个新字段，添加参数解析
+- 修改文件：D:\Opencode\test_ralph\dev_v1\src\ut_sdma.h, ut_sdma_main.c, case9_mixed_scenario.c
+- **学习点：**
+  - 在 struct sdma_test_input 中添加：src_stride_len, dst_stride_len, stride_num, chn_type, thread_num
+  - 在 ut_sdma_main.c 的 case_getopt() 中添加新参数解析：--src-stride (-S), --dst-stride (-D), --stride-num (-N), --chn-type (-C), --thread-num (-T)
+  - 参数范围检查：src_stride_len, dst_stride_len, stride_num 范围 [0, 4M]；send_cpu, recv_cpu 范围 [0, 607]
+  - 在 case9_mixed_scenario.c 中添加全局变量存储新参数，在 case_get_input() 中读取
+  - 更新 sqe_task 设置使用新的 stride 参数
+
+---
+
+## 2026-05-08 - US-003
+- 实现内容：实现 stride 参数控制，添加参数检查确保三个 stride 参数要么全0（普通模式）要么全非0（stride模式）
+- 修改文件：D:\Opencode\test_ralph\dev_v1\src\case9_mixed_scenario.c
+- **学习点：**
+  - 在 case_get_input() 中添加 stride 参数检查：三个参数必须全为0或全非0
+  - 默认普通模式：src_stride_len=0, dst_stride_len=0, stride_num=0, opcode=OPCODE_COMMON_MODE
+  - 当三个参数非0时，硬件会根据 stride_num 自动启用 stride 传输模式（见 mdk_sdma.c:1172）
+  - 参数范围检查已在 US-002 中实现（0~4M）
+
+---
+
+## 2026-05-08 - US-004
+- 实现内容：实现通道类型和线程控制，根据 --chn-type 参数选择独占/共享通道，根据 --thread-num 控制线程数量
+- 修改文件：D:\Opencode\test_ralph\dev_v1\src\case9_mixed_scenario.c, ut_sdma_main.c
+- **学习点：**
+  - 在 sdma_test() 中根据 CHN_TYPE 选择函数：0=共享(sdma_icopy_data/sdma_iquery_chn)，1=独占(sdma_copy_data/sdma_wait_chn)
+  - 在 mixed_send() 和 mixed_recv() 中根据 CHN_TYPE 选择通道初始化：0=sdma_init_chn，1=sdma_alloc_chn
+  - 在 sdma_mem_release() 中根据 CHN_TYPE 选择通道释放：0=sdma_deinit_chn，1=sdma_free_chn
+  - 在 ut_sdma_main.c 中添加 chn_type 范围检查：必须为 0 或 1
+  - THREAD_NUM 控制线程数量，线程绑核逻辑：send进程线程绑核 CPU0+1~CPU0+thread_num，recv进程线程绑核 CPU1+1~CPU1+thread_num
+  - 线程一一对应：send thread-i 对应 recv thread-i，通过共享内存同步
+
+---
+
+

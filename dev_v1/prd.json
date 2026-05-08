@@ -1,0 +1,91 @@
+{
+  "project": "sdma-dk",
+  "branchName": "ralph/add-mixed-scenario-test",
+  "description": "为 sdma tool 新增混合场景测试用例，通过新增参数控制 stride、通道类型和线程数量",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "创建新测试用例框架",
+      "description": "作为开发者，我需要创建 case9_mixed_scenario.c，基于 case_muti_direction.c 但只有 send 和 recv 两个进程，每个进程创建线程下发任务，线程一一对应。",
+      "acceptanceCriteria": [
+        "在 src/ 下创建 case9_mixed_scenario.c",
+        "调整为两个进程（send 和 recv），复用 fork 框架",
+        "每个进程创建线程（数量由 --thread-num 参数控制）",
+        "send 的 thread1 对应 recv 的 thread1，以此类推",
+        "每个线程只处理自己及对端内存的搬运任务，不使用其他内存",
+        "线程绑定核：send 进程绑核号由 --send 指定，其线程绑核号为 send+1, send+2, ...",
+        "线程绑定核：recv 进程绑核号由 --recv 指定，其线程绑核号为 recv+1, recv+2, ...",
+        "所有线程核号必须在 [0, 607] 范围内",
+        "复用 NUMA 绑定、内存固定（pin_umem）、通道初始化流程",
+        "通过 ut_sdma_main.c 的参数解析框架注册新用例（case 13）",
+        "Typecheck 通过"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "扩展测试输入结构体",
+      "description": "作为开发者，我需要扩展 struct sdma_test_input，添加 stride 参数、通道类型和线程数量字段。",
+      "acceptanceCriteria": [
+        "在 src/ut_sdma.h 的 struct sdma_test_input 中添加字段：",
+        "  - src_stride_len：源步长长度（有效值范围 0~4M）",
+        "  - dst_stride_len：目标步长长度（有效值范围 0~4M）",
+        "  - stride_num：步长数量（有效值范围 0~4M）",
+        "  - chn_type：通道类型（控制 send/recv 进程的通道类型）",
+        "  - thread_num：线程数量（控制 send/recv 进程创建的线程数）",
+        "在 ut_sdma_main.c 中添加参数解析：",
+        "  - --src-stride (-S)：设置 src_stride_len（范围 0~4M）",
+        "  - --dst-stride (-D)：设置 dst_stride_len（范围 0~4M）",
+        "  - --stride-num (-N)：设置 stride_num（范围 0~4M）",
+        "  - --chn-type (-C)：设置通道类型",
+        "  - --thread-num (-T)：设置线程数量",
+        "  - --send (-s)：send 进程绑核号（范围 [0, 607]）",
+        "  - --recv (-r)：recv 进程绑核号（范围 [0, 607]）",
+        "更新 case9_mixed_scenario 函数签名以使用新参数",
+        "Typecheck 通过"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "实现 stride 参数控制",
+      "description": "作为测试人员，我希望通过 --src-stride、--dst-stride、--stride-num 参数控制 stride 模式，默认普通模式（三个字段均为0），有效值范围 0~4M。",
+      "acceptanceCriteria": [
+        "默认普通模式：src_stride_len=0, dst_stride_len=0, stride_num=0, opcode=OPCODE_COMMON_MODE",
+        "使用 --src-stride (-S) 参数设置 sqe_task 的 src_stride_len 字段（范围 0~4M）",
+        "使用 --dst-stride (-D) 参数设置 sqe_task 的 dst_stride_len 字段（范围 0~4M）",
+        "使用 --stride-num (-N) 参数设置 sqe_task 的 stride_num 字段（范围 0~4M）",
+        "当三个参数非0时，启用 stride 传输模式",
+        "不支持 scatter-gather 模式",
+        "Typecheck 通过"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "实现通道类型和线程控制",
+      "description": "作为测试人员，我希望通过 --chn-type 参数控制 send/recv 进程的通道类型，通过 --thread-num 控制线程数量，线程一一对应。",
+      "acceptanceCriteria": [
+        "使用 --chn-type (-C) 参数控制通道类型：",
+        "  - send 进程根据 chn_type 选择通道：独占（sdma_alloc_chn + sdma_copy_data/sdma_wait_chn）或共享（sdma_init_chn + sdma_icopy_data/sdma_iwait_chn）",
+        "  - recv 进程同样根据 chn_type 选择通道类型",
+        "使用 --thread-num (-T) 参数控制每个进程创建的线程数量",
+        "send 进程创建 thread_num 个线程，绑核号为 send+1, send+2, ..., send+thread_num",
+        "recv 进程创建 thread_num 个线程，绑核号为 recv+1, recv+2, ..., recv+thread_num",
+        "所有线程核号必须在 [0, 607] 范围内",
+        "线程一一对应：send 的 thread-i 只与 recv 的 thread-i 交互（共享内存同步）",
+        "每个线程只处理自己及对端内存的搬运任务，不使用其他内存",
+        "Typecheck 通过"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

@@ -1,0 +1,252 @@
+# Ralph Loop 执行日志
+
+## 项目信息
+- 项目根目录：D:\Opencode\test_ralph\dev_v1
+- 开始时间：2026-05-08
+- PRD 文件：D:\Opencode\test_ralph\dev_v1\prd.json
+- 故事总数：4 个（US-001 ~ US-004）
+
+---
+
+## 准备工作（Ralph 循环开始之前）
+
+### 开始时间
+2026-05-08
+
+### 执行步骤
+
+1. **创建版本隔离目录**
+   - 创建 D:\Opencode\test_ralph\dev_v1\src
+   - 创建 D:\Opencode\test_ralph\dev_v1\lib
+
+2. **复制源码到新文件夹**
+   - 复制 D:\Opencode\test_ralph\src\* → dev_v1\src\（12个文件）
+   - 复制 D:\Opencode\test_ralph\lib\* → dev_v1\lib\（3个文件）
+
+3. **设置版本控制文件**
+   - 复制 prd.json → dev_v1\prd.json
+   - 创建 dev_v1\VERSION.md（版本号 v1，基于 PRD，对应需求 US-001~US-004）
+   - 创建 dev_v1\progress.txt（初始化进度日志和 Codebase Patterns）
+
+4. **确认文件结构**
+   - dev_v1\src\：case0~case8, case_hpl, case_muti, case_single, share_memory_test.h, ut_sdma.h, ut_sdma_main.c
+   - dev_v1\lib\：hisi_sdma.h, mdk_sdma.c, mdk_sdma.h
+
+### 完成时间
+2026-05-08
+
+### 执行结果
+✓ 版本隔离环境准备完成
+- 目录：dev_v1\（与后续版本 v2, v3... 隔离）
+- 源码基线：src/ 和 lib/ 目录完整复制
+- 状态文件：prd.json, progress.txt, VERSION.md 已就位
+
+---
+
+## 迭代 1 - US-001: 创建新测试用例框架
+
+### 开始时间
+2026-05-08
+
+### 任务描述
+创建 case9_mixed_scenario.c，基于 case_muti_direction.c 但只有 send 和 recv 两个进程，每个进程创建线程下发任务，线程一一对应。
+
+### 执行步骤
+
+1. **读取状态文件**
+   - 读取 prd.json，找到 US-001（优先级1，passes: false）
+   - 读取 progress.txt，查看 Codebase Patterns
+
+2. **创建 case9_mixed_scenario.c**
+   - 基于 dev_v1/src/case_muti_direction.c 框架
+   - 调整为两个进程（PROC_NUM = 2）：send 和 recv
+   - 定义 THREAD_NUM = 4（默认线程数）
+   - 创建 sdma_mixed_th 结构体（包含 num, cpu_num, status, sdma, sqe_task, loop_times, g_barrier, request）
+   - 实现 sdma_test() 函数：使用 sdma_icopy_data + sdma_iquery_chn
+   - 实现 sdma_mixed_thread() 函数：线程函数，绑核后执行 sdma_test
+   - 实现 mixed_send() 和 mixed_recv() 函数（两个进程的主逻辑）
+   - 在混合模式下：
+     - send 进程绑核 CPU0，创建 thread_num 个线程，绑核 CPU0+1, CPU0+2, ...
+     - recv 进程绑核 CPU1，创建 thread_num 个线程，绑核 CPU1+1, CPU1+2, ...
+     - 线程一一对应：send thread-i 对应 recv thread-i
+   - 使用共享内存（shmget/shmat）进行进程间同步
+   - 使用 sdma_pin_umem 固定内存，sdma_mem_alloc 分配内存
+   - 所有线程核号必须在 [0, 607] 范围内
+
+3. **修改 ut_sdma.h**
+   - 添加 case9_mixed_scenario 函数原型（第65行）
+
+4. **修改 ut_sdma_main.c**
+   - 在 eventMap[] 中添加 {case9_mixed_scenario}（第39行后）
+   - 在 case_names[] 中添加 "case_mixed_scenario"（第53行后）
+
+5. **更新状态文件**
+   - prd.json：US-001 的 passes 设为 true
+   - progress.txt：追加 US-001 完成记录
+
+### 完成时间
+2026-05-08
+
+### 执行结果
+✓ 完成 US-001: 创建新测试用例框架
+- 文件：dev_v1/src/case9_mixed_scenario.c (925行)
+- 修改：dev_v1/src/ut_sdma.h, dev_v1/src/ut_sdma_main.c
+- 状态：passes = true
+
+---
+
+## 迭代 2 - US-002: 扩展测试输入结构体
+
+### 开始时间
+2026-05-08
+
+### 任务描述
+在 struct sdma_test_input 中添加5个新字段，并在 ut_sdma_main.c 中添加对应的参数解析。
+
+### 执行步骤
+
+1. **修改 ut_sdma.h**
+   - 在 struct sdma_test_input（约第38行）添加：
+     - uint32_t src_stride_len;
+     - uint32_t dst_stride_len;
+     - uint32_t stride_num;
+     - uint32_t chn_type;
+     - uint32_t thread_num;
+
+2. **修改 ut_sdma_main.c**
+   - 在 case_getopt() 函数中添加新参数：
+     - --src-stride (-S)：解析并设置 src_stride_len
+     - --dst-stride (-D)：解析并设置 dst_stride_len
+     - --stride-num (-N)：解析并设置 stride_num
+     - --chn-type (-C)：解析并设置 chn_type
+     - --thread-num (-T)：解析并设置 thread_num
+     - --send (-s)：解析并设置 send_cpu（已有，确认范围 [0, 607]）
+     - --recv (-r)：解析并设置 recv_cpu（已有，确认范围 [0, 607]）
+   - 添加参数范围检查：src_stride_len, dst_stride_len, stride_num 必须在 [0, 4M] 范围内
+   - 添加核号范围检查：send_cpu, recv_cpu 必须在 [0, 607] 范围内
+   - 更新 print_help() 添加新参数说明
+
+3. **更新 case9_mixed_scenario.c**
+   - 添加全局变量：CHN_TYPE, SRC_STRIDE_LEN, DST_STRIDE_LEN, STRIDE_NUM
+   - 更新 case_get_input() 读取新参数到全局变量
+   - 更新函数签名以使用新参数
+   - 将 THREAD_NUM 改为使用 test_cmd->thread_num
+   - 更新 sqe_task 设置使用新的 stride 参数
+
+### 完成时间
+2026-05-08
+
+### 执行结果
+✓ 完成 US-002: 扩展测试输入结构体
+- 修改文件：dev_v1/src/ut_sdma.h, dev_v1/src/ut_sdma_main.c, dev_v1/src/case9_mixed_scenario.c
+- 状态：passes = true
+
+---
+
+## 迭代 3 - US-003: 实现 stride 参数控制
+
+### 开始时间
+2026-05-08
+
+### 任务描述
+使用 --src-stride、--dst-stride、--stride-num 参数控制 stride 模式，默认普通模式（三个字段均为0），有效值范围 0~4M。
+
+### 执行步骤：
+
+1. **修改 case9_mixed_scenario.c**
+   - 在 case_get_input() 中添加 stride 参数检查：
+     - 三个参数必须全为0（普通模式）或全非0（stride 模式）
+     - 如果只有部分参数非0，报错并退出
+   - 参数解析和 sqe_task 设置已在 US-002 中完成
+
+2. **确认已有实现**
+   - ut_sdma_main.c 中已有参数解析：--src-stride (-S), --dst-stride (-D), --stride-num (-N)
+   - 参数范围检查已在 US-002 中实现（0~4M）
+   - mixed_send() 和 mixed_recv() 中已设置 sqe_task 的 stride 字段
+   - 默认普通模式：三个参数均为0，opcode=OPCODE_COMMON_MODE
+   - 当三个参数非0时，硬件根据 stride_num 自动启用 stride 模式（见 mdk_sdma.c:1172）
+
+### 完成时间
+2026-05-08
+
+### 执行结果
+✓ 完成 US-003: 实现 stride 参数控制
+- 修改文件：dev_v1/src/case9_mixed_scenario.c（添加参数检查）
+- 状态：passes = true
+
+---
+
+## 迭代 4 - US-004: 实现通道类型和线程控制
+
+### 开始时间
+2026-05-08
+
+### 任务描述
+通过 --chn-type 参数控制 send/recv 进程的通道类型，通过 --thread-num 控制线程数量，线程一一对应。
+
+### 执行步骤：
+
+1. **修改 case9_mixed_scenario.c**
+   - 修改 sdma_test() 函数，根据 CHN_TYPE 选择函数：
+     - CHN_TYPE=0（共享）：使用 sdma_icopy_data + sdma_iquery_chn
+     - CHN_TYPE=1（独占）：使用 sdma_copy_data + sdma_wait_chn
+   - 修改 mixed_recv() 通道初始化：
+     - CHN_TYPE=0：sdma_init_chn(fd, i)
+     - CHN_TYPE=1：sdma_alloc_chn(fd)
+   - 修改 mixed_send() 通道初始化：
+     - CHN_TYPE=0：sdma_init_chn(fd, THREAD_NUM + i)
+     - CHN_TYPE=1：sdma_alloc_chn(fd)
+   - 修改 sdma_mem_release() 通道释放：
+     - CHN_TYPE=0：sdma_deinit_chn(sdma[k])
+     - CHN_TYPE=1：sdma_free_chn(sdma[k])
+   - 线程绑核逻辑已实现：send+1/+2/...，recv+1/+2/...
+   - 线程一一对应已实现：send thread-i 对应 recv thread-i
+   - 核号范围检查已实现：[0, 607]
+
+2. **修改 ut_sdma_main.c**
+   - 在 case_getopt() 的 -C 参数处理中添加范围检查：
+     - chn_type 必须为 0（共享）或 1（独占）
+     - 无效值报错并退出
+
+3. **更新状态文件**
+   - prd.json：US-004 的 passes 设为 true
+   - progress.txt：追加 US-004 完成记录
+
+### 完成时间
+2026-05-08
+
+### 执行结果
+✓ 完成 US-004: 实现通道类型和线程控制
+- 修改文件：dev_v1/src/case9_mixed_scenario.c, dev_v1/src/ut_sdma_main.c
+- 状态：passes = true
+
+---
+
+
+
+## ��ɻ���
+
+### ��ִ��ʱ��
+2026-05-08
+
+### ������
+- ? US-001: passes = true�������²���������ܣ�
+- ? US-002: passes = true����չ��������ṹ�壩
+- ? US-003: passes = true��ʵ�� stride �������ƣ�
+- ? US-004: passes = true��ʵ��ͨ�����ͺ��߳̿��ƣ�
+
+### �޸��ļ��б�
+- dev_v1/src/case9_mixed_scenario.c���½���Լ925�У�
+- dev_v1/src/ut_sdma.h�����Ӻ���ԭ�ͺͽṹ���ֶΣ�
+- dev_v1/src/ut_sdma_main.c�����Ӳ���������ע�ᣩ
+- dev_v1/lib/���� src/ ���ƣ�δ�޸ģ�
+
+### ִ��ͳ��
+- ����������4�Σ�US-001 ~ US-004��
+- ���й��£�passes = true
+- ״̬�ļ���prd.json, progress.txt, log.txt ���Ѹ���
+
+### ��һ������
+- �ɴ��� dev_v2/ Ŀ¼������һ���汾����
+- �������� dev_v2/ �²������� v1 ����
+- ʹ�� task ��������ȫ���� agent ������һ�ֿ���

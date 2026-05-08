@@ -1,3 +1,9 @@
+---
+name: ralph
+description: "自主开发循环，每次迭代使用全新上下文。触发词：开始 Ralph 循环、运行 Ralph、使用 Ralph 开发、启动自主开发循环"
+user-invocable: true
+---
+
 # Ralph Loop Skill for OpenCode
 
 ## 概述

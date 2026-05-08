@@ -1,3 +1,9 @@
+---
+name: prd
+description: "生成 PRD 并转换为 prd.json。触发词：创建 PRD、生成 PRD、为 XXX 写 PRD、转换 PRD、转换为 prd.json"
+user-invocable: true
+---
+
 # PRD Skill for OpenCode
 
 ## 概述
