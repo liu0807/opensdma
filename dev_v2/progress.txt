@@ -1,0 +1,16 @@
+# Ralph Progress Log (v2)
+Started: 2026-05-12
+
+## Codebase Patterns（继承 v1）
+- 测试用例基于 `case_muti_direction.c` 框架，调整为两个进程（send/recv）
+- 每个进程创建线程下发任务，线程一一对应（send thread-i 对应 recv thread-i）
+- 线程绑核：send 进程绑核 --send，其线程绑核 send+1, send+2, ...；recv 同理
+- 核号范围 [0, 607]
+- stride 参数范围：src_stride_len、dst_stride_len、stride_num 均为 0~4M
+- 通道类型由 --chn-type (-C) 控制，0=共享（sdma_init_chn + sdma_icopy_data/sdma_iwait_chn），1=独占（sdma_alloc_chn + sdma_copy_data/sdma_wait_chn）
+- PROC_NUM=1（1个 send 子进程 + 1个 recv 父进程）
+- MAX_THREAD_NUM=150
+- next_sqe 最后一个元素置 NULL，防止越界
+- direction 参数：0=线程内，1=线程间单向，2=线程间双向
+
+---

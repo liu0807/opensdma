@@ -48,6 +48,7 @@ static int CPU_PER_NODE;
 static int LOOP;
 static int THREAD_NUM = 4;
 static int CHN_TYPE = 0;
+static int DIRECTION = 0;
 static uint32_t SRC_STRIDE_LEN = 0;
 static uint32_t DST_STRIDE_LEN = 0;
 static uint32_t STRIDE_NUM = 0;
@@ -425,105 +426,134 @@ static int mixed_recv(int fd, key_t key, int numa_id)
         goto unpin_mem_recv;
     }
 
-    ret = ready_status_timeout_judgement(&shared->submitter_pid_ready);
-    if (ret != 0) {
-        printf("[recv] wait submitter_pid_ready timeout \n");
-        goto unpin_mem_recv;
-    }
-
-    for (i = 0; i < THREAD_NUM; i++) {
-        send_dst_addr[i] = shared->src_addr_list[i];
-    }
-
-    ret = sdma_add_authority(fd, &shared->submitter_process_id, 1);
-    if (ret < 0) {
-        printf("[recv] sdma_add_authority failed\n");
-        goto unpin_mem_recv;
-    }
-
-    shared->owner_process_id = owner_process_id;
-    for (i = 0; i < THREAD_NUM; i++) {
-        shared->dst_addr_list[i] = (uint64_t)(void *)recv_dst_addr[i];
-    }
-    shared->owner_pid_ready = true;
-
-    for (i = 0; i < THREAD_NUM; i++) {
-        if (CHN_TYPE == 0) {
-            sdma[i] = sdma_init_chn(fd, i);
-        } else {
-            sdma[i] = sdma_alloc_chn(fd);
-        }
-        if (sdma[i] == NULL) {
-            printf("[recv] creat channel failed\n");
-            goto unpin_mem_recv;
-        }
-    }
-
-    for (i = 0; i < THREAD_NUM; i++) {
-        sqe_task[i].src_addr = send_dst_addr[i];
-        sqe_task[i].dst_addr = (uint64_t)(void *)(recv_src_addr[i]);
-        sqe_task[i].src_process_id = shared->submitter_process_id;
-        sqe_task[i].dst_process_id = owner_process_id;
-        sqe_task[i].src_stride_len = SRC_STRIDE_LEN;
-        sqe_task[i].dst_stride_len = DST_STRIDE_LEN;
-        sqe_task[i].stride_num = STRIDE_NUM;
-        sqe_task[i].length = MAX_DATA_SIZE;
-        sqe_task[i].opcode = OPCODE_COMMON_MODE;
-        sqe_task[i].next_sqe = (i < THREAD_NUM - 1) ? &sqe_task[i + 1] : NULL;
-        pt_input[i].num = i;
-        pt_input[i].cpu_num = CPU1 + i + 1;
-        if (pt_input[i].cpu_num > 607) {
-            printf("[recv] thread %d cpu_num %d out of range [0, 607]\n", i, pt_input[i].cpu_num);
-            goto unpin_mem_recv;
-        }
-        pt_input[i].status = status;
-        pt_input[i].sdma = sdma[i];
-        pt_input[i].sqe_task = &sqe_task[i];
-        pt_input[i].loop_times = LOOP;
-        pt_input[i].g_barrier = &g_barrier;
-    }
-
-    shared->owner_task_ready = true;
-    ret = ready_status_timeout_judgement(&shared->submitter_task_ready);
-    if (ret != 0) {
-        printf("[recv] wait submitter_task_ready timeout \n");
-        goto unpin_mem_recv;
-    }
-
-    for (i = 0; i < THREAD_NUM; i++) {
-        pthread_create(&tid[i], NULL, sdma_mixed_thread, &pt_input[i]);
-    }
-
-    for (i = 0; i < THREAD_NUM; i++) {
-        ret = ready_status_timeout_judgement(&status[i]);
+    if (DIRECTION != 0) {
+        ret = ready_status_timeout_judgement(&shared->submitter_pid_ready);
         if (ret != 0) {
-            printf("[recv] wait recv task ready timeout \n");
+            printf("[recv] wait submitter_pid_ready timeout \n");
             goto unpin_mem_recv;
         }
+
+        if (DIRECTION == 2) {
+            for (i = 0; i < THREAD_NUM; i++) {
+                send_dst_addr[i] = shared->src_addr_list[i];
+            }
+        }
+
+        ret = sdma_add_authority(fd, &shared->submitter_process_id, 1);
+        if (ret < 0) {
+            printf("[recv] sdma_add_authority failed\n");
+            goto unpin_mem_recv;
+        }
+
+        shared->owner_process_id = owner_process_id;
+        for (i = 0; i < THREAD_NUM; i++) {
+            shared->dst_addr_list[i] = (uint64_t)(void *)recv_dst_addr[i];
+        }
+        shared->owner_pid_ready = true;
+    } else {
+        shared->owner_process_id = owner_process_id;
+        shared->owner_pid_ready = true;
     }
 
-    shared->owner_grant_finish = true;
-    ret = ready_status_timeout_judgement(&shared->submitter_grant_finish);
-    if (ret != 0) {
-        printf("[recv] wait submitter_grant_finish timeout \n");
-        goto unpin_mem_recv;
-    }
-    gettimeofday(&start, NULL);
-    g_barrier = true;
-    for (i = 0; i < THREAD_NUM; i++) {
-        pthread_join(tid[i], (void**)&(pthread_ret[i]));
-    }
-    for (i = 0; i < THREAD_NUM; i++) {
-        if (pthread_ret[i]) {
-            if (*(pthread_ret[i]) != 0) {
-                printf("[recv] sdma_mixed_thread execute failed!\n");
+    if (DIRECTION != 1) {
+        for (i = 0; i < THREAD_NUM; i++) {
+            if (CHN_TYPE == 0) {
+                sdma[i] = sdma_init_chn(fd, i);
+            } else {
+                sdma[i] = sdma_alloc_chn(fd);
+            }
+            if (sdma[i] == NULL) {
+                printf("[recv] creat channel failed\n");
                 goto unpin_mem_recv;
             }
         }
-    }
 
-    gettimeofday(&end, NULL);
-    sdma_count_bw_latency(start, end, MAX_DATA_SIZE, LOOP, THREAD_NUM);
+        for (i = 0; i < THREAD_NUM; i++) {
+            if (DIRECTION == 0) {
+                sqe_task[i].src_addr = (uint64_t)(void *)recv_src_addr[i];
+                sqe_task[i].dst_addr = (uint64_t)(void *)recv_dst_addr[i];
+                sqe_task[i].src_process_id = owner_process_id;
+                sqe_task[i].dst_process_id = owner_process_id;
+            } else {
+                sqe_task[i].src_addr = (uint64_t)(void *)recv_src_addr[i];
+                sqe_task[i].dst_addr = send_dst_addr[i];
+                sqe_task[i].src_process_id = owner_process_id;
+                sqe_task[i].dst_process_id = shared->submitter_process_id;
+            }
+            sqe_task[i].src_stride_len = SRC_STRIDE_LEN;
+            sqe_task[i].dst_stride_len = DST_STRIDE_LEN;
+            sqe_task[i].stride_num = STRIDE_NUM;
+            sqe_task[i].length = MAX_DATA_SIZE;
+            sqe_task[i].opcode = OPCODE_COMMON_MODE;
+            sqe_task[i].next_sqe = (i < THREAD_NUM - 1) ? &sqe_task[i + 1] : NULL;
+            pt_input[i].num = i;
+            pt_input[i].cpu_num = CPU1 + i + 1;
+            if (pt_input[i].cpu_num > 607) {
+                printf("[recv] thread %d cpu_num %d out of range [0, 607]\n", i, pt_input[i].cpu_num);
+                goto unpin_mem_recv;
+            }
+            pt_input[i].status = status;
+            pt_input[i].sdma = sdma[i];
+            pt_input[i].sqe_task = &sqe_task[i];
+            pt_input[i].loop_times = LOOP;
+            pt_input[i].g_barrier = &g_barrier;
+        }
+
+        shared->owner_task_ready = true;
+        ret = ready_status_timeout_judgement(&shared->submitter_task_ready);
+        if (ret != 0) {
+            printf("[recv] wait submitter_task_ready timeout \n");
+            goto unpin_mem_recv;
+        }
+
+        for (i = 0; i < THREAD_NUM; i++) {
+            pthread_create(&tid[i], NULL, sdma_mixed_thread, &pt_input[i]);
+        }
+
+        for (i = 0; i < THREAD_NUM; i++) {
+            ret = ready_status_timeout_judgement(&status[i]);
+            if (ret != 0) {
+                printf("[recv] wait recv task ready timeout \n");
+                goto unpin_mem_recv;
+            }
+        }
+
+        shared->owner_grant_finish = true;
+        ret = ready_status_timeout_judgement(&shared->submitter_grant_finish);
+        if (ret != 0) {
+            printf("[recv] wait submitter_grant_finish timeout \n");
+            goto unpin_mem_recv;
+        }
+        gettimeofday(&start, NULL);
+        g_barrier = true;
+        for (i = 0; i < THREAD_NUM; i++) {
+            pthread_join(tid[i], (void**)&(pthread_ret[i]));
+        }
+        for (i = 0; i < THREAD_NUM; i++) {
+            if (pthread_ret[i]) {
+                if (*(pthread_ret[i]) != 0) {
+                    printf("[recv] sdma_mixed_thread execute failed!\n");
+                    goto unpin_mem_recv;
+                }
+            }
+        }
+
+        gettimeofday(&end, NULL);
+        sdma_count_bw_latency(start, end, MAX_DATA_SIZE, LOOP, THREAD_NUM);
+    } else {
+        shared->owner_task_ready = true;
+        ret = ready_status_timeout_judgement(&shared->submitter_task_ready);
+        if (ret != 0) {
+            printf("[recv] wait submitter_task_ready timeout \n");
+            goto unpin_mem_recv;
+        }
+        shared->owner_grant_finish = true;
+        ret = ready_status_timeout_judgement(&shared->submitter_grant_finish);
+        if (ret != 0) {
+            printf("[recv] wait submitter_grant_finish timeout \n");
+            goto unpin_mem_recv;
+        }
+    }
 
     shared->recv_proc_ret = 0;
     shared->finish_flag--;
@@ -635,27 +665,38 @@ static int mixed_send(int fd, key_t key, int numa_id)
         goto unpin_mem_send;
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
-        shared->src_addr_list[i] = (uint64_t)(void *)send_dst_addr[i];
-    }
-    shared->submitter_process_id = process_id;
-    shared->submitter_pid_ready = true;
+    if (DIRECTION != 0) {
+        if (DIRECTION == 2) {
+            for (i = 0; i < THREAD_NUM; i++) {
+                shared->src_addr_list[i] = (uint64_t)(void *)send_dst_addr[i];
+            }
+        }
+        shared->submitter_process_id = process_id;
+        shared->submitter_pid_ready = true;
 
-    ret = ready_status_timeout_judgement(&shared->owner_pid_ready);
-    if (ret != 0) {
-        printf("[send] wait owner_pid_ready timeout \n");
-        goto unpin_mem_send;
-    }
+        ret = ready_status_timeout_judgement(&shared->owner_pid_ready);
+        if (ret != 0) {
+            printf("[send] wait owner_pid_ready timeout \n");
+            goto unpin_mem_send;
+        }
 
-    for (i = 0; i < THREAD_NUM; i++) {
-        dest[i] = shared->dst_addr_list[i];
-    }
-    dst_process_id = shared->owner_process_id;
+        for (i = 0; i < THREAD_NUM; i++) {
+            dest[i] = shared->dst_addr_list[i];
+        }
+        dst_process_id = shared->owner_process_id;
 
-    ret = sdma_add_authority(fd, &dst_process_id, 1);
-    if (ret < 0) {
-        printf("[send] sdma_add_authority failed\n");
-        goto unpin_mem_send;
+        ret = sdma_add_authority(fd, &dst_process_id, 1);
+        if (ret < 0) {
+            printf("[send] sdma_add_authority failed\n");
+            goto unpin_mem_send;
+        }
+    } else {
+        shared->submitter_pid_ready = true;
+        ret = ready_status_timeout_judgement(&shared->owner_pid_ready);
+        if (ret != 0) {
+            printf("[send] wait owner_pid_ready timeout \n");
+            goto unpin_mem_send;
+        }
     }
 
     for (i = 0; i < THREAD_NUM; i++) {
@@ -671,10 +712,17 @@ static int mixed_send(int fd, key_t key, int numa_id)
     }
 
     for (i = 0; i < THREAD_NUM; i++) {
-        sqe_task[i].src_addr = dest[i];
-        sqe_task[i].dst_addr = (uint64_t)(void *)(send_src_addr[i]);
-        sqe_task[i].src_process_id = dst_process_id;
-        sqe_task[i].dst_process_id = process_id;
+        if (DIRECTION == 0) {
+            sqe_task[i].src_addr = (uint64_t)(void *)send_src_addr[i];
+            sqe_task[i].dst_addr = (uint64_t)(void *)send_dst_addr[i];
+            sqe_task[i].src_process_id = process_id;
+            sqe_task[i].dst_process_id = process_id;
+        } else {
+            sqe_task[i].src_addr = (uint64_t)(void *)send_src_addr[i];
+            sqe_task[i].dst_addr = dest[i];
+            sqe_task[i].src_process_id = process_id;
+            sqe_task[i].dst_process_id = dst_process_id;
+        }
         sqe_task[i].src_stride_len = SRC_STRIDE_LEN;
         sqe_task[i].dst_stride_len = DST_STRIDE_LEN;
         sqe_task[i].stride_num = STRIDE_NUM;
@@ -796,6 +844,7 @@ static int case_get_input(struct sdma_test_input *cmd, int *dev1, int *dev2)
         return SDMA_TEST_FAILED;
     }
     CHN_TYPE = cmd->chn_type;
+    DIRECTION = cmd->direction;
     SRC_STRIDE_LEN = cmd->src_stride_len;
     DST_STRIDE_LEN = cmd->dst_stride_len;
     STRIDE_NUM = cmd->stride_num;
@@ -807,6 +856,7 @@ static int case_get_input(struct sdma_test_input *cmd, int *dev1, int *dev2)
     printf("LOOP [%d]\n", LOOP);
     printf("THREAD_NUM [%d]\n", THREAD_NUM);
     printf("CHN_TYPE [%d]\n", CHN_TYPE);
+    printf("DIRECTION [%d]\n", DIRECTION);
     printf("SRC_STRIDE_LEN [%u]\n", SRC_STRIDE_LEN);
     printf("DST_STRIDE_LEN [%u]\n", DST_STRIDE_LEN);
     printf("STRIDE_NUM [%u]\n", STRIDE_NUM);

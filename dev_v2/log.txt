@@ -1,0 +1,80 @@
+# Ralph Loop 执行日志 (v2)
+
+## 项目信息
+- 项目根目录：D:\Opencode\test_ralph\dev_v2
+- 开始时间：2026-05-12
+- PRD 文件：D:\Opencode\test_ralph\dev_v2\prd.json
+- 故事总数：1 个（US-005）
+- 源码基线：dev_v1/ 修复后代码复制
+
+---
+
+## 迭代 1 (v2) - US-005: 实现 --direction 参数控制搬运方向
+
+### 开始时间
+2026-05-12
+
+### 任务描述
+新增 --direction 参数控制数据搬运方向：0=线程内，1=线程间单向，2=线程间双向。
+
+### 执行步骤
+
+1. **修改 ut_sdma.h**
+   - 在 struct sdma_test_input 中添加 direction 字段 (line 56)
+
+2. **修改 ut_sdma_main.c**
+   - 添加 --direction (-R) 参数解析（case_getopt）
+   - direction 值检查：0、1、2（非法值报错）
+   - 更新 print_help 添加 --direction 说明和 case 13 说明
+
+3. **修改 case9_mixed_scenario.c**
+   - 添加 DIRECTION 全局变量 (line 51)，在 case_get_input() 中读取 (line 847)
+   - direction=0（线程内）：
+     - send 和 recv 线程各自下发任务到自己的内存
+     - mixed_recv 中 recv 线程使用 recv_src[i]→recv_dst[i] 发送数据
+     - mixed_send 中 send 线程使用 send_src[i]→send_dst[i] 发送数据
+   - direction=1（线程间单向）：
+     - 仅 send 线程下发任务，搬运地址 send.src_addr → recv.dst_addr
+     - recv 线程不激活下发任务（跳过 sdma_test），只做同步
+     - send 使用通过共享内存获取的 recv.dst_addr 作为目标地址
+   - direction=2（线程间双向）：
+     - send 和 recv 线程均下发任务
+     - send 使用 send.src → recv.dst
+     - recv 使用 recv.src → send.dst（通过共享内存交换地址）
+
+### 完成时间
+2026-05-12
+
+### 执行结果
+✓ 完成 US-005: 实现 --direction 参数控制搬运方向
+- 修改文件：dev_v2/src/ut_sdma.h, ut_sdma_main.c, case9_mixed_scenario.c
+- 状态：passes = true
+
+---
+
+## 完成汇总
+
+### 执行结果
+- ✅ US-005: passes = true（实现 --direction 参数）
+
+### v2 修改文件列表
+- dev_v2/src/ut_sdma.h（添加 direction 字段）
+- dev_v2/src/ut_sdma_main.c（添加参数解析 + print_help 更新）
+- dev_v2/src/case9_mixed_scenario.c（实现三种搬运方向模式）
+
+### v2 版本参数一览
+| 参数 | 说明 |
+|------|------|
+| --src-stride (-S) | 源步长长度（0~4M） |
+| --dst-stride (-D) | 目标步长长度（0~4M） |
+| --stride-num (-N) | 步长数量（0~4M） |
+| --chn-type (-C) | 通道类型（0=共享, 1=独占）|
+| --thread-num (-T) | 线程数量（≤150） |
+| --send (-s) | send 进程绑核号 [0,607] |
+| --recv (-r) | recv 进程绑核号 [0,607] |
+| --direction (-R) | 搬运方向（0=线程内, 1=线程间单向, 2=线程间双向）|
+
+### 版本隔离
+- dev_v1/：基础框架 + stride 参数 + 通道类型控制（已完成）
+- dev_v2/：新增 --direction 搬运方向控制（已完成）
+- 后续新需求将在 dev_v3/ 等新目录开发

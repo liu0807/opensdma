@@ -1,0 +1,25 @@
+{
+  "project": "sdma-dk",
+  "branchName": "ralph/add-direction-parameter",
+  "description": "为 case9_mixed_scenario.c 新增 --direction 参数，控制数据搬运方向",
+  "userStories": [
+    {
+      "id": "US-005",
+      "title": "实现 --direction 参数控制搬运方向",
+      "description": "作为测试人员，我希望通过 --direction 参数控制数据搬运方向（线程内/线程间单向/线程间双向），以便覆盖更多传输场景。",
+      "acceptanceCriteria": [
+        "在 src/ut_sdma.h 的 struct sdma_test_input 中添加 direction 字段",
+        "在 ut_sdma_main.c 中添加 --direction (-R) 参数解析",
+        "direction 值定义：0=线程内，1=线程间单向，2=线程间双向",
+        "direction=0（线程内）：所有线程均下发任务，搬运地址为各自的 src → dst。send 进程内线程使用 send_src[i]→send_dst[i]，recv 进程内线程使用 recv_src[i]→recv_dst[i]",
+        "direction=1（线程间单向）：仅 send 创建的线程下发任务，搬运地址为 send.src_addr → recv.dst_addr（即 send 的 src → recv 的 dst）",
+        "direction=2（线程间双向）：send 和 recv 创建的线程均下发任务，一一对应。搬运地址为 send.src_addr → recv.dst_addr、recv.src_addr → send.dst_addr",
+        "更新 print_help 添加 --direction 参数说明",
+        "Typecheck 通过"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

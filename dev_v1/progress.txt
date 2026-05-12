@@ -21,15 +21,18 @@ Started: 2026-05-08
   - 核号范围 [0, 607]
 ---
 
-## 2026-05-08 - US-002
-- 实现内容：扩展 struct sdma_test_input 添加5个新字段，添加参数解析
-- 修改文件：D:\Opencode\test_ralph\dev_v1\src\ut_sdma.h, ut_sdma_main.c, case9_mixed_scenario.c
-- **学习点：**
-  - 在 struct sdma_test_input 中添加：src_stride_len, dst_stride_len, stride_num, chn_type, thread_num
-  - 在 ut_sdma_main.c 的 case_getopt() 中添加新参数解析：--src-stride (-S), --dst-stride (-D), --stride-num (-N), --chn-type (-C), --thread-num (-T)
-  - 参数范围检查：src_stride_len, dst_stride_len, stride_num 范围 [0, 4M]；send_cpu, recv_cpu 范围 [0, 607]
-  - 在 case9_mixed_scenario.c 中添加全局变量存储新参数，在 case_get_input() 中读取
-  - 更新 sqe_task 设置使用新的 stride 参数
+## 2026-05-08 - 修复 US-001~US-004（代码检视问题）
+- 修复内容：
+  - PROC_NUM 2→1，解决3进程竞态条件
+  - next_sqe 越界修复
+  - thread_num 上限检查（≤150）
+  - print_help 更新 case 13 说明
+- 修改文件：
+  - dev_v1/src/case9_mixed_scenario.c
+  - dev_v1/src/ut_sdma_main.c
+  - dev_v1/src/ut_sdma.h
+---
+
 
 ---
 

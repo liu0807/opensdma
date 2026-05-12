@@ -131,6 +131,11 @@ void print_help()
         "\t\tchannel type for send/recv processes (-C)\n"
         "\t[--thread-num]:\n"
         "\t\tnumber of threads for send/recv processes (-T)\n"
+        "\t[--direction]:\n"
+        "\t\tdata transfer direction (-R)\n"
+        "\t\t\t0: intra-thread (each thread uses its own src→dst)\n"
+        "\t\t\t1: inter-process one-way (only send issues tasks, src→dst)\n"
+        "\t\t\t2: inter-process bidirectional (both send and recv issue tasks)\n"
         "\t[--all]:\n"
         "\t\texcute all simple function case (1-8)\n"
         "TIPPS\n"
@@ -226,13 +231,14 @@ static int sdma_test_getopt(int argc, char **argv, struct sdma_test_input *test_
         {"stride-num", required_argument, NULL, 'N'},
         {"chn-type", required_argument, NULL, 'C'},
         {"thread-num", required_argument, NULL, 'T'},
+        {"direction", required_argument, NULL, 'R'},
         {"all", no_argument, NULL, 'a'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
 
     /* Process Command Line arguments */
-    while ((c = getopt_long(argc, argv, "hac:s:r:n:d:l:p:m:i:S:D:N:C:T:", long_opt, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "hac:s:r:n:d:l:p:m:i:S:D:N:C:T:R:", long_opt, NULL)) != -1) {
         switch (c) {
             case 'a':
                 test_cmd->run_all_test = 1;
@@ -312,6 +318,13 @@ static int sdma_test_getopt(int argc, char **argv, struct sdma_test_input *test_
                 test_cmd->thread_num = strtol(optarg, &endptr, DECIMAL);
                 if (test_cmd->thread_num > MAX_THREAD_NUM) {
                     fprintf(stderr, "thread_num out of range [1, %d]\n", MAX_THREAD_NUM);
+                    return SDMA_TEST_FAILED;
+                }
+                break;
+            case 'R':
+                test_cmd->direction = strtol(optarg, &endptr, DECIMAL);
+                if (test_cmd->direction > 2) {
+                    fprintf(stderr, "direction must be 0 (intra-thread), 1 (inter-process one-way) or 2 (inter-process bidirectional)\n");
                     return SDMA_TEST_FAILED;
                 }
                 break;

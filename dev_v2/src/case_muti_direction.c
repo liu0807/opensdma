@@ -20,6 +20,7 @@
 
 #define MAX_SIZE (50 * 1024 * 1024)
 #define PROC_NUM 1
+#define NUM 4
 #define ALIGNMEMT 2097152
 #define MAX_LOOP_NUM 2000
 #define CPU_NUM_PER_NODE_CASE1 38
@@ -35,6 +36,7 @@
 #define US_PER_MS 1000
 #define BYTE_PER_KBYTE 1024
 #define KBYTE_PER_MBYTE 1024
+#define COOKIE_NUM (2 * NUM)
 #define TIMEOUT 300000
 #define FINISH_FLAG_ORIGIN 2
 #define USLEEP_TIME 20
@@ -46,15 +48,10 @@ static int CPU1;
 static int MEMORY_TYPE;
 static int CPU_PER_NODE;
 static int LOOP;
-static int THREAD_NUM = 4;
-static int CHN_TYPE = 0;
-static uint32_t SRC_STRIDE_LEN = 0;
-static uint32_t DST_STRIDE_LEN = 0;
-static uint32_t STRIDE_NUM = 0;
 
 static int NUMA_NODE_NUMS = 8;
 
-struct sdma_mixed_th {
+struct sdma_multi_th {
     int num;
     int cpu_num;
     bool *status;
@@ -69,40 +66,22 @@ static int sdma_test(void *sdma, sdma_sqe_task_t *sqe_task, unsigned int data_si
 {
     int ret;
 
-    if (CHN_TYPE == 0) {
-        /* 共享通道 */
-        for (int i = 0; i < LOOP; i++) {
-            ret = sdma_icopy_data(sdma, sqe_task, 1, request);
-            if (ret != 0) {
-                printf("sdma_icopy_data failed, ret = %d\n", ret);
-                return SDMA_TEST_FAILED;
-            }
-
-            do {
-                ret = sdma_iquery_chn(sdma, request);
-                if (ret == SDMA_RNDCNT_ERR) {
-                    continue;
-                } else if (ret != 0) {
-                    printf("sdma_iquery_chn failed!!, ret = %d\n", ret);
-                    return SDMA_TEST_FAILED;
-                }
-            } while (ret != 0);
+    for (int i = 0; i < LOOP; i++) {
+        ret = sdma_icopy_data(sdma, sqe_task, 1, request); /* only send 1 task every loop */
+        if (ret != 0) {
+            printf("sdma_icopy_data failed, ret = %d\n", ret);
+            return SDMA_TEST_FAILED;
         }
-    } else {
-        /* 独占通道 */
-        for (int i = 0; i < LOOP; i++) {
-            ret = sdma_copy_data(sdma, sqe_task, 1);
-            if (ret != 0) {
-                printf("sdma_copy_data failed, ret = %d\n", ret);
-                return SDMA_TEST_FAILED;
-            }
 
-            ret = sdma_wait_chn(sdma, 1);
-            if (ret != 0) {
-                printf("sdma_wait_chn failed, ret = %d\n", ret);
+        do {
+            ret = sdma_iquery_chn(sdma, request);
+            if (ret == SDMA_RNDCNT_ERR) {
+                continue;
+            } else if (ret != 0) {
+                printf("sdma_iquery_chn failed!!, ret = %d\n", ret);
                 return SDMA_TEST_FAILED;
             }
-        }
+        } while (ret != 0);
     }
 
     return 0;
@@ -146,9 +125,9 @@ static int finish_status_judgement(int *finish_flag, int *process_ret)
     return 0;
 }
 
-static void *sdma_mixed_thread(void *arg)
+static void *sdma_put_zcopy_thread(void *arg)
 {
-    struct sdma_mixed_th *temp = (struct sdma_mixed_th *)arg;
+    struct sdma_multi_th *temp = (struct sdma_multi_th *)arg;
     cpu_set_t affinity;
     static int ret = 0;
     cpu_set_t mask;
@@ -297,16 +276,10 @@ static void sdma_mem_release(sdma_sqe_task_t *sqe_task, char *src_addr[], char *
 
     free(sqe_task);
 
-    for (k = 0; k < THREAD_NUM; k++) {
+    for (k = 0; k < NUM; k++) {
         if (sdma[k]) {
-            if (CHN_TYPE == 0) {
-                if (sdma_deinit_chn(sdma[k])) {
-                    printf("sdma_deinit_chn failed!\n");
-                }
-            } else {
-                if (sdma_free_chn(sdma[k])) {
-                    printf("sdma_free_chn failed!\n");
-                }
+            if (sdma_deinit_chn(sdma[k])) {
+                printf("sdma_deinit_chn failed!\n");
             }
         }
     }
@@ -316,7 +289,7 @@ static void sdma_mem_release(sdma_sqe_task_t *sqe_task, char *src_addr[], char *
         case MEMORY_TYPE_2:
         case MEMORY_TYPE_3:
         case MEMORY_TYPE_4:
-            for (k = 0; k < THREAD_NUM; k++) {
+            for (k = 0; k < NUM; k++) {
                 if (!dst_addr[k]) {
                     break;
                 }
@@ -363,23 +336,23 @@ static int open_share_mem(key_t key, void **share_mem)
     return shmid;
 }
 
-static int mixed_recv(int fd, key_t key, int numa_id)
+static int put_recv(int fd, key_t key, int numa_id)
 {
     int mmap_size = (MAX_DATA_SIZE - 1 + HUGEPAGE_SIZE) / HUGEPAGE_SIZE * HUGEPAGE_SIZE;
-    struct sdma_mixed_th pt_input[THREAD_NUM] = {0};
+    struct sdma_multi_th pt_input[NUM] = {0};
     struct shared_use_st *shared = NULL;
-    uint64_t cookie[2 * THREAD_NUM] = {0};
+    uint64_t cookie[COOKIE_NUM] = {0};
     sdma_sqe_task_t *sqe_task = NULL;
-    char *recv_dst_addr[THREAD_NUM] = {0};
-    char *recv_src_addr[THREAD_NUM] = {0};
-    uint64_t send_dst_addr[THREAD_NUM];
-    int *pthread_ret[THREAD_NUM] = {0};
+    char *recv_dst_addr[NUM] = {0};
+    char *recv_src_addr[NUM] = {0};
+    uint64_t send_dst_addr[NUM];
+    int *pthread_ret[NUM] = {0};
     struct timeval start, end;
     uint32_t owner_process_id;
-    pthread_t tid[THREAD_NUM] = {0};
+    pthread_t tid[NUM] = {0};
     bool g_barrier = false;
-    bool status[THREAD_NUM] = {0};
-    void *sdma[THREAD_NUM] = {0};
+    bool status[NUM] = {0};
+    void *sdma[NUM] = {0};
     int cookie_num = 0;
     void *shm = NULL;
     int shmid;
@@ -392,13 +365,13 @@ static int mixed_recv(int fd, key_t key, int numa_id)
         return SDMA_TEST_FAILED;
     }
     shared = (struct shared_use_st *)shm;
-    sqe_task = calloc(THREAD_NUM, sizeof(sdma_sqe_task_t));
+    sqe_task = calloc(NUM, sizeof(sdma_sqe_task_t));
     if (sqe_task == NULL) {
         printf("[recv] calloc sqe_task failed\n");
         goto release_share_mem;
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         ret = sdma_mem_alloc(&recv_src_addr[i], &recv_dst_addr[i], numa_id, mmap_size);
         if (ret < 0) {
             printf("[recv] sdma_mem_alloc[%d] failed\n", i);
@@ -406,13 +379,13 @@ static int mixed_recv(int fd, key_t key, int numa_id)
         }
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         if (sdma_pin_umem(fd, recv_dst_addr[i], mmap_size, &cookie[i])) {
             printf("recv_dst_addr[%d] pin fail!\n ", i);
             goto unpin_mem_recv;
         }
         cookie_num++;
-        if (sdma_pin_umem(fd, recv_src_addr[i], mmap_size, &cookie[i + THREAD_NUM])) {
+        if (sdma_pin_umem(fd, recv_src_addr[i], mmap_size, &cookie[i + NUM])) {
             printf("recv_src_addr[%d] pin fail!\n ", i);
             goto unpin_mem_recv;
         }
@@ -431,7 +404,7 @@ static int mixed_recv(int fd, key_t key, int numa_id)
         goto unpin_mem_recv;
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         send_dst_addr[i] = shared->src_addr_list[i];
     }
 
@@ -442,40 +415,32 @@ static int mixed_recv(int fd, key_t key, int numa_id)
     }
 
     shared->owner_process_id = owner_process_id;
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         shared->dst_addr_list[i] = (uint64_t)(void *)recv_dst_addr[i];
     }
     shared->owner_pid_ready = true;
 
-    for (i = 0; i < THREAD_NUM; i++) {
-        if (CHN_TYPE == 0) {
-            sdma[i] = sdma_init_chn(fd, i);
-        } else {
-            sdma[i] = sdma_alloc_chn(fd);
-        }
+    for (i = 0; i < NUM; i++) {
+        sdma[i] = sdma_init_chn(fd, i);
         if (sdma[i] == NULL) {
             printf("[recv] creat channel failed\n");
             goto unpin_mem_recv;
         }
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         sqe_task[i].src_addr = send_dst_addr[i];
         sqe_task[i].dst_addr = (uint64_t)(void *)(recv_src_addr[i]);
         sqe_task[i].src_process_id = shared->submitter_process_id;
         sqe_task[i].dst_process_id = owner_process_id;
-        sqe_task[i].src_stride_len = SRC_STRIDE_LEN;
-        sqe_task[i].dst_stride_len = DST_STRIDE_LEN;
-        sqe_task[i].stride_num = STRIDE_NUM;
+        sqe_task[i].src_stride_len = 0;
+        sqe_task[i].dst_stride_len = 0;
+        sqe_task[i].stride_num = 0;
         sqe_task[i].length = MAX_DATA_SIZE;
         sqe_task[i].opcode = OPCODE_COMMON_MODE;
-        sqe_task[i].next_sqe = (i < THREAD_NUM - 1) ? &sqe_task[i + 1] : NULL;
+        sqe_task[i].next_sqe = &sqe_task[i + 1];
         pt_input[i].num = i;
-        pt_input[i].cpu_num = CPU1 + i + 1;
-        if (pt_input[i].cpu_num > 607) {
-            printf("[recv] thread %d cpu_num %d out of range [0, 607]\n", i, pt_input[i].cpu_num);
-            goto unpin_mem_recv;
-        }
+        pt_input[i].cpu_num = i + 1 + CPU1;
         pt_input[i].status = status;
         pt_input[i].sdma = sdma[i];
         pt_input[i].sqe_task = &sqe_task[i];
@@ -490,11 +455,11 @@ static int mixed_recv(int fd, key_t key, int numa_id)
         goto unpin_mem_recv;
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
-        pthread_create(&tid[i], NULL, sdma_mixed_thread, &pt_input[i]);
+    for (i = 0; i < NUM; i++) {
+        pthread_create(&tid[i], NULL, sdma_put_zcopy_thread, &pt_input[i]);
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         ret = ready_status_timeout_judgement(&status[i]);
         if (ret != 0) {
             printf("[recv] wait recv task ready timeout \n");
@@ -510,20 +475,20 @@ static int mixed_recv(int fd, key_t key, int numa_id)
     }
     gettimeofday(&start, NULL);
     g_barrier = true;
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         pthread_join(tid[i], (void**)&(pthread_ret[i]));
     }
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         if (pthread_ret[i]) {
             if (*(pthread_ret[i]) != 0) {
-                printf("[recv] sdma_mixed_thread execute failed!\n");
+                printf("[recv] sdma_put_zcopy_thread execute failed!\n");
                 goto unpin_mem_recv;
             }
         }
     }
 
     gettimeofday(&end, NULL);
-    sdma_count_bw_latency(start, end, MAX_DATA_SIZE, LOOP, THREAD_NUM);
+    sdma_count_bw_latency(start, end, MAX_DATA_SIZE, LOOP, NUM);
 
     shared->recv_proc_ret = 0;
     shared->finish_flag--;
@@ -532,7 +497,7 @@ static int mixed_recv(int fd, key_t key, int numa_id)
         printf("[recv] proc failed due to send proc not finished or failed!\n");
     }
 
-    for (i = 0; i < 2 * THREAD_NUM; i++) {
+    for (i = 0; i < COOKIE_NUM; i++) {
         if (sdma_unpin_umem(fd, cookie[i])) {
             printf("[recv] unpin fail!\n");
             goto release_mem_recv;
@@ -550,7 +515,7 @@ unpin_mem_recv:
                 printf("[recv] unpin fail!\n");
             }
         } else {
-            if (sdma_unpin_umem(fd, cookie[i / DIVIDEND + THREAD_NUM])) {
+            if (sdma_unpin_umem(fd, cookie[i / DIVIDEND + NUM])) {
                 printf("[recv] unpin fail!\n");
             }
         }
@@ -565,23 +530,23 @@ release_share_mem:
     return SDMA_TEST_FAILED;
 }
 
-static int mixed_send(int fd, key_t key, int numa_id)
+static int put_send(int fd, key_t key, int numa_id)
 {
     int mmap_size = (MAX_DATA_SIZE - 1 + HUGEPAGE_SIZE) / HUGEPAGE_SIZE * HUGEPAGE_SIZE;
-    struct sdma_mixed_th pt_input[THREAD_NUM] = {0};
+    struct sdma_multi_th pt_input[NUM] = {0};
     uint32_t dst_process_id, process_id;
     struct shared_use_st *shared = NULL;
     sdma_sqe_task_t *sqe_task = NULL;
-    char *send_src_addr[THREAD_NUM] = {0};
-    char *send_dst_addr[THREAD_NUM] = {0};
-    uint64_t cookie[2 * THREAD_NUM];
-    int *pthread_ret[THREAD_NUM] = {0};
+    char *send_src_addr[NUM] = {0};
+    char *send_dst_addr[NUM] = {0};
+    uint64_t cookie[COOKIE_NUM];
+    int *pthread_ret[NUM] = {0};
     struct timeval start, end;
-    uint64_t dest[THREAD_NUM] = {0};
-    bool status[THREAD_NUM] = {0};
+    uint64_t dest[NUM] = {0};
+    bool status[NUM] = {0};
     bool g_barrier = false;
-    void *sdma[THREAD_NUM] = {0};
-    pthread_t tid[THREAD_NUM];
+    void *sdma[NUM] = {0};
+    pthread_t tid[NUM];
     int cookie_num = 0;
     void *shm = NULL;
     int shmid;
@@ -602,13 +567,13 @@ static int mixed_send(int fd, key_t key, int numa_id)
     shared->submitter_grant_finish = false;
     shared->finish_flag = FINISH_FLAG_ORIGIN;
 
-    sqe_task = calloc(THREAD_NUM, sizeof(sdma_sqe_task_t));
+    sqe_task = calloc(NUM, sizeof(sdma_sqe_task_t));
     if (sqe_task == NULL) {
         printf("[send] calloc sqe_task failed\n");
         goto unbind_share_mem;
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         ret = sdma_mem_alloc(&send_src_addr[i], &send_dst_addr[i], numa_id, mmap_size);
         if (ret < 0) {
             printf("[send] sdma_mem_alloc[%d] failed\n", i);
@@ -616,13 +581,13 @@ static int mixed_send(int fd, key_t key, int numa_id)
         }
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         if (sdma_pin_umem(fd, send_src_addr[i], mmap_size, &cookie[i])) {
             printf("send_src_addr[%d] pin fail!\n ", i);
             goto unpin_mem_send;
         }
         cookie_num++;
-        if (sdma_pin_umem(fd, send_dst_addr[i], mmap_size, &cookie[i + THREAD_NUM])) {
+        if (sdma_pin_umem(fd, send_dst_addr[i], mmap_size, &cookie[i + NUM])) {
             printf("send_dst_addr[%d] pin fail!\n ", i);
             goto unpin_mem_send;
         }
@@ -635,7 +600,7 @@ static int mixed_send(int fd, key_t key, int numa_id)
         goto unpin_mem_send;
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         shared->src_addr_list[i] = (uint64_t)(void *)send_dst_addr[i];
     }
     shared->submitter_process_id = process_id;
@@ -647,7 +612,7 @@ static int mixed_send(int fd, key_t key, int numa_id)
         goto unpin_mem_send;
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         dest[i] = shared->dst_addr_list[i];
     }
     dst_process_id = shared->owner_process_id;
@@ -658,35 +623,27 @@ static int mixed_send(int fd, key_t key, int numa_id)
         goto unpin_mem_send;
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
-        if (CHN_TYPE == 0) {
-            sdma[i] = sdma_init_chn(fd, THREAD_NUM + i);
-        } else {
-            sdma[i] = sdma_alloc_chn(fd);
-        }
+    for (i = 0; i < NUM; i++) {
+        sdma[i] = sdma_init_chn(fd, NUM + i);
         if (sdma[i] == NULL) {
             printf("[send] creat channel failed\n");
             goto unpin_mem_send;
         }
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         sqe_task[i].src_addr = dest[i];
         sqe_task[i].dst_addr = (uint64_t)(void *)(send_src_addr[i]);
         sqe_task[i].src_process_id = dst_process_id;
         sqe_task[i].dst_process_id = process_id;
-        sqe_task[i].src_stride_len = SRC_STRIDE_LEN;
-        sqe_task[i].dst_stride_len = DST_STRIDE_LEN;
-        sqe_task[i].stride_num = STRIDE_NUM;
+        sqe_task[i].src_stride_len = 0;
+        sqe_task[i].dst_stride_len = 0;
+        sqe_task[i].stride_num = 0;
         sqe_task[i].length = MAX_DATA_SIZE;
         sqe_task[i].opcode = OPCODE_COMMON_MODE;
-        sqe_task[i].next_sqe = (i < THREAD_NUM - 1) ? &sqe_task[i + 1] : NULL;
+        sqe_task[i].next_sqe = &sqe_task[i + 1];
         pt_input[i].num = i;
-        pt_input[i].cpu_num = CPU0 + i + 1;
-        if (pt_input[i].cpu_num > 607) {
-            printf("[send] thread %d cpu_num %d out of range [0, 607]\n", i, pt_input[i].cpu_num);
-            goto unpin_mem_send;
-        }
+        pt_input[i].cpu_num = i + 1 + CPU0;
         pt_input[i].status = status;
         pt_input[i].sdma = sdma[i];
         pt_input[i].sqe_task = &sqe_task[i];
@@ -701,11 +658,11 @@ static int mixed_send(int fd, key_t key, int numa_id)
         goto unpin_mem_send;
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
-        pthread_create(&tid[i], NULL, sdma_mixed_thread, &pt_input[i]);
+    for (i = 0; i < NUM; i++) {
+        pthread_create(&tid[i], NULL, sdma_put_zcopy_thread, &pt_input[i]);
     }
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         ret = ready_status_timeout_judgement(&status[i]);
         if (ret != 0) {
             printf("[send] wait send task ready timeout \n");
@@ -723,19 +680,19 @@ static int mixed_send(int fd, key_t key, int numa_id)
     gettimeofday(&start, NULL);
     g_barrier = true;
 
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         pthread_join(tid[i], (void**)&(pthread_ret[i]));
     }
-    for (i = 0; i < THREAD_NUM; i++) {
+    for (i = 0; i < NUM; i++) {
         if (pthread_ret[i]) {
             if (*(pthread_ret[i]) != 0) {
-                printf("[send] sdma_mixed_thread execute failed!\n");
+                printf("[send] sdma_put_zcopy_thread execute failed!\n");
                 goto unpin_mem_send;
             }
         }
     }
     gettimeofday(&end, NULL);
-    sdma_count_bw_latency(start, end, MAX_DATA_SIZE, LOOP, THREAD_NUM);
+    sdma_count_bw_latency(start, end, MAX_DATA_SIZE, LOOP, NUM);
 
     shared->send_proc_ret = 0;
     shared->finish_flag--;
@@ -744,7 +701,7 @@ static int mixed_send(int fd, key_t key, int numa_id)
         printf("[send] proc failed due to recv proc not finished or failed!\n");
     }
 
-    for (i = 0; i < 2 * THREAD_NUM; i++) {
+    for (i = 0; i < COOKIE_NUM; i++) {
         if (sdma_unpin_umem(fd, cookie[i])) {
             printf("[send] unpin fail!\n");
             goto release_mem_send;
@@ -765,7 +722,7 @@ unpin_mem_send:
                 printf("[send] unpin fail!\n");
             }
         } else {
-            if (sdma_unpin_umem(fd, cookie[i / DIVIDEND + THREAD_NUM])) {
+            if (sdma_unpin_umem(fd, cookie[i / DIVIDEND + NUM])) {
                 printf("[send] unpin fail!\n");
             }
         }
@@ -790,32 +747,12 @@ static int case_get_input(struct sdma_test_input *cmd, int *dev1, int *dev2)
     CPU_PER_NODE = cmd->num_of_cpu;
     MEMORY_TYPE = cmd->memory_type;
     LOOP = cmd->loop_times;
-    THREAD_NUM = cmd->thread_num > 0 ? cmd->thread_num : THREAD_NUM;
-    if (THREAD_NUM > MAX_THREAD_NUM) {
-        printf("THREAD_NUM %d out of range [1, %d]\n", THREAD_NUM, MAX_THREAD_NUM);
-        return SDMA_TEST_FAILED;
-    }
-    CHN_TYPE = cmd->chn_type;
-    SRC_STRIDE_LEN = cmd->src_stride_len;
-    DST_STRIDE_LEN = cmd->dst_stride_len;
-    STRIDE_NUM = cmd->stride_num;
     printf("MAX data length = %llu\n", MAX_DATA_SIZE);
     printf("CUP CORE OF SEND PROC [%d]\n", CPU0);
     printf("CUP CORE OF RECV PROC [%d]\n", CPU1);
     printf("CPU_PER_NODE [%d]\n", CPU_PER_NODE);
     printf("MEMORY_TYPE [%d]\n", MEMORY_TYPE);
     printf("LOOP [%d]\n", LOOP);
-    printf("THREAD_NUM [%d]\n", THREAD_NUM);
-    printf("CHN_TYPE [%d]\n", CHN_TYPE);
-    printf("SRC_STRIDE_LEN [%u]\n", SRC_STRIDE_LEN);
-    printf("DST_STRIDE_LEN [%u]\n", DST_STRIDE_LEN);
-    printf("STRIDE_NUM [%u]\n", STRIDE_NUM);
-    /* Check stride parameters: all 0 (normal mode) or all non-zero (stride mode) */
-    if ((SRC_STRIDE_LEN == 0 || DST_STRIDE_LEN == 0 || STRIDE_NUM == 0) &&
-        !(SRC_STRIDE_LEN == 0 && DST_STRIDE_LEN == 0 && STRIDE_NUM == 0)) {
-        printf("Error: stride parameters must be all 0 (normal mode) or all non-zero (stride mode)\n");
-        return SDMA_TEST_FAILED;
-    }
     if (MAX_DATA_SIZE < 1 || MAX_DATA_SIZE > MAX_SIZE) {
         printf("MAX_DATA_SIZE num wrong, please input num (1B-50MB)\n");
         return SDMA_TEST_FAILED;
@@ -883,7 +820,7 @@ static void case_bind_cpu_node(int cpu_id, int numa_id)
     numa_bitmask_free(numa_mask);
 }
 
-int case9_mixed_scenario(struct sdma_test_input *cmd)
+int case_muti_direction(struct sdma_test_input *cmd)
 {
     int device_num_1, device_num_2;
     char sdma_dev[DEV_LEN];
@@ -932,7 +869,7 @@ int case9_mixed_scenario(struct sdma_test_input *cmd)
             return SDMA_TEST_FAILED;
         }
 
-        ret = mixed_send(fd1, key, numa_id);
+        ret = put_send(fd1, key, numa_id);
         if (ret < 0) {
             printf("sdma send proc failed\n");
         }
@@ -964,7 +901,7 @@ int case9_mixed_scenario(struct sdma_test_input *cmd)
             return SDMA_TEST_FAILED;
         }
 
-        ret = mixed_recv(fd3, key, numa_id);
+        ret = put_recv(fd3, key, numa_id);
         if (ret < 0) {
             printf("sdma recv proc failed\n");
         }

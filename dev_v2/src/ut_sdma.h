@@ -53,6 +53,7 @@ struct sdma_test_input {
     uint32_t stride_num;
     uint32_t chn_type;
     uint32_t thread_num;
+    uint32_t direction;
 };
 
 int case0_sdma_test(struct sdma_test_input *cmd);
