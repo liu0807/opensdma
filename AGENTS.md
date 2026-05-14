@@ -32,6 +32,7 @@ OpenCode 插件工作区，用于开发测试三个自定义技能：`prd`、`ra
 - **工作目录限制在 `D:\Opencode\test_ralph`，禁止访问任何其他文件夹**
 - 当需求描述中没有详细说明的地方，必须按照 prd skill 的要求向用户追问澄清问题，禁止自行构造需求细节或假设参数
 - 在用户没有明确指示“开始写代码”或“启动 Ralph 循环”之前，禁止执行 Ralph 循环或开始编写代码
+- **定位问题时，定位清楚之后，列出修改方案并详细描述如何修改及为什么要这样修改，征询用户同意后才能修改代码**
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 

@@ -367,25 +367,34 @@ static int open_share_mem(key_t key, void **share_mem)
 static int mixed_recv(int fd, key_t key, int numa_id)
 {
     int mmap_size = (MAX_DATA_SIZE - 1 + HUGEPAGE_SIZE) / HUGEPAGE_SIZE * HUGEPAGE_SIZE;
-    struct sdma_mixed_th pt_input[THREAD_NUM] = {0};
+    struct sdma_mixed_th pt_input[THREAD_NUM];
     struct shared_use_st *shared = NULL;
-    uint64_t cookie[2 * THREAD_NUM] = {0};
+    uint64_t cookie[2 * THREAD_NUM];
     sdma_sqe_task_t *sqe_task = NULL;
-    char *recv_dst_addr[THREAD_NUM] = {0};
-    char *recv_src_addr[THREAD_NUM] = {0};
+    char *recv_dst_addr[THREAD_NUM];
+    char *recv_src_addr[THREAD_NUM];
     uint64_t send_dst_addr[THREAD_NUM];
-    int *pthread_ret[THREAD_NUM] = {0};
+    int *pthread_ret[THREAD_NUM];
     struct timeval start, end;
     uint32_t owner_process_id;
-    pthread_t tid[THREAD_NUM] = {0};
+    pthread_t tid[THREAD_NUM];
     bool g_barrier = false;
-    bool status[THREAD_NUM] = {0};
-    void *sdma[THREAD_NUM] = {0};
+    bool status[THREAD_NUM];
+    void *sdma[THREAD_NUM];
     int cookie_num = 0;
     void *shm = NULL;
     int shmid;
     int ret;
     int i;
+
+    memset(pt_input, 0, THREAD_NUM * sizeof(struct sdma_mixed_th));
+    memset(cookie, 0, 2 * THREAD_NUM * sizeof(uint64_t));
+    memset(recv_dst_addr, 0, THREAD_NUM * sizeof(char *));
+    memset(recv_src_addr, 0, THREAD_NUM * sizeof(char *));
+    memset(pthread_ret, 0, THREAD_NUM * sizeof(int *));
+    memset(tid, 0, THREAD_NUM * sizeof(pthread_t));
+    memset(status, 0, THREAD_NUM * sizeof(bool));
+    memset(sdma, 0, THREAD_NUM * sizeof(void *));
 
     shmid = open_share_mem(key, &shm);
     if (shmid < 0 || shm == (void *)SHM_ERR) {
@@ -598,25 +607,34 @@ release_share_mem:
 static int mixed_send(int fd, key_t key, int numa_id)
 {
     int mmap_size = (MAX_DATA_SIZE - 1 + HUGEPAGE_SIZE) / HUGEPAGE_SIZE * HUGEPAGE_SIZE;
-    struct sdma_mixed_th pt_input[THREAD_NUM] = {0};
+    struct sdma_mixed_th pt_input[THREAD_NUM];
     uint32_t dst_process_id, process_id;
     struct shared_use_st *shared = NULL;
     sdma_sqe_task_t *sqe_task = NULL;
-    char *send_src_addr[THREAD_NUM] = {0};
-    char *send_dst_addr[THREAD_NUM] = {0};
+    char *send_src_addr[THREAD_NUM];
+    char *send_dst_addr[THREAD_NUM];
     uint64_t cookie[2 * THREAD_NUM];
-    int *pthread_ret[THREAD_NUM] = {0};
+    int *pthread_ret[THREAD_NUM];
     struct timeval start, end;
-    uint64_t dest[THREAD_NUM] = {0};
-    bool status[THREAD_NUM] = {0};
+    uint64_t dest[THREAD_NUM];
+    bool status[THREAD_NUM];
     bool g_barrier = false;
-    void *sdma[THREAD_NUM] = {0};
+    void *sdma[THREAD_NUM];
     pthread_t tid[THREAD_NUM];
     int cookie_num = 0;
     void *shm = NULL;
     int shmid;
     int ret;
     int i;
+
+    memset(pt_input, 0, THREAD_NUM * sizeof(struct sdma_mixed_th));
+    memset(send_src_addr, 0, THREAD_NUM * sizeof(char *));
+    memset(send_dst_addr, 0, THREAD_NUM * sizeof(char *));
+    memset(pthread_ret, 0, THREAD_NUM * sizeof(int *));
+    memset(dest, 0, THREAD_NUM * sizeof(uint64_t));
+    memset(status, 0, THREAD_NUM * sizeof(bool));
+    memset(sdma, 0, THREAD_NUM * sizeof(void *));
+    memset(tid, 0, THREAD_NUM * sizeof(pthread_t));
 
     shmid = open_share_mem(key, &shm);
     if (shmid < 0 || shm == (void *)SHM_ERR) {
