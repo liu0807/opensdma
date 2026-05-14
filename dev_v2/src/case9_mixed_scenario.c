@@ -366,26 +366,37 @@ static int open_share_mem(key_t key, void **share_mem)
 
 static int mixed_recv(int fd, key_t key, int numa_id)
 {
-    int mmap_size = (MAX_DATA_SIZE - 1 + HUGEPAGE_SIZE) / HUGEPAGE_SIZE * HUGEPAGE_SIZE;
-    struct sdma_mixed_th pt_input[THREAD_NUM];
-    struct shared_use_st *shared = NULL;
-    uint64_t cookie[2 * THREAD_NUM];
-    sdma_sqe_task_t *sqe_task = NULL;
-    char *recv_dst_addr[THREAD_NUM];
-    char *recv_src_addr[THREAD_NUM];
-    uint64_t send_dst_addr[THREAD_NUM];
-    int *pthread_ret[THREAD_NUM];
-    struct timeval start, end;
-    uint32_t owner_process_id;
-    pthread_t tid[THREAD_NUM];
-    bool g_barrier = false;
-    bool status[THREAD_NUM];
-    void *sdma[THREAD_NUM];
-    int cookie_num = 0;
-    void *shm = NULL;
-    int shmid;
-    int ret;
-    int i;
+     uint64_t required_size = MAX_DATA_SIZE;
+     int mmap_size;
+     struct sdma_mixed_th pt_input[THREAD_NUM];
+     struct shared_use_st *shared = NULL;
+     uint64_t cookie[2 * THREAD_NUM];
+     sdma_sqe_task_t *sqe_task = NULL;
+     char *recv_dst_addr[THREAD_NUM];
+     char *recv_src_addr[THREAD_NUM];
+     uint64_t send_dst_addr[THREAD_NUM];
+     int *pthread_ret[THREAD_NUM];
+     struct timeval start, end;
+     uint32_t owner_process_id;
+     pthread_t tid[THREAD_NUM];
+     bool g_barrier = false;
+     bool status[THREAD_NUM];
+     void *sdma[THREAD_NUM];
+     int cookie_num = 0;
+     void *shm = NULL;
+     int shmid;
+     int ret;
+     int i;
+
+     /* stride 模式下需确保缓冲区覆盖总跨距: data_size*stride_num + stride_len*(stride_num-1) */
+     if (STRIDE_NUM > 1) {
+         uint64_t src_span = (uint64_t)SRC_STRIDE_LEN * (STRIDE_NUM - 1) + (uint64_t)MAX_DATA_SIZE * STRIDE_NUM;
+         uint64_t dst_span = (uint64_t)DST_STRIDE_LEN * (STRIDE_NUM - 1) + (uint64_t)MAX_DATA_SIZE * STRIDE_NUM;
+         uint64_t max_span = src_span > dst_span ? src_span : dst_span;
+         if (max_span > required_size)
+             required_size = max_span;
+     }
+     mmap_size = (int)((required_size - 1 + HUGEPAGE_SIZE) / HUGEPAGE_SIZE * HUGEPAGE_SIZE);
 
     memset(pt_input, 0, THREAD_NUM * sizeof(struct sdma_mixed_th));
     memset(cookie, 0, 2 * THREAD_NUM * sizeof(uint64_t));
@@ -606,26 +617,36 @@ release_share_mem:
 
 static int mixed_send(int fd, key_t key, int numa_id)
 {
-    int mmap_size = (MAX_DATA_SIZE - 1 + HUGEPAGE_SIZE) / HUGEPAGE_SIZE * HUGEPAGE_SIZE;
-    struct sdma_mixed_th pt_input[THREAD_NUM];
-    uint32_t dst_process_id, process_id;
-    struct shared_use_st *shared = NULL;
-    sdma_sqe_task_t *sqe_task = NULL;
-    char *send_src_addr[THREAD_NUM];
-    char *send_dst_addr[THREAD_NUM];
-    uint64_t cookie[2 * THREAD_NUM];
-    int *pthread_ret[THREAD_NUM];
-    struct timeval start, end;
-    uint64_t dest[THREAD_NUM];
-    bool status[THREAD_NUM];
-    bool g_barrier = false;
-    void *sdma[THREAD_NUM];
-    pthread_t tid[THREAD_NUM];
-    int cookie_num = 0;
-    void *shm = NULL;
-    int shmid;
-    int ret;
-    int i;
+     uint64_t required_size = MAX_DATA_SIZE;
+     int mmap_size;
+     struct sdma_mixed_th pt_input[THREAD_NUM];
+     uint32_t dst_process_id, process_id;
+     struct shared_use_st *shared = NULL;
+     sdma_sqe_task_t *sqe_task = NULL;
+     char *send_src_addr[THREAD_NUM];
+     char *send_dst_addr[THREAD_NUM];
+     uint64_t cookie[2 * THREAD_NUM];
+     int *pthread_ret[THREAD_NUM];
+     struct timeval start, end;
+     uint64_t dest[THREAD_NUM];
+     bool status[THREAD_NUM];
+     bool g_barrier = false;
+     void *sdma[THREAD_NUM];
+     pthread_t tid[THREAD_NUM];
+     int cookie_num = 0;
+     void *shm = NULL;
+     int shmid;
+     int ret;
+     int i;
+
+     if (STRIDE_NUM > 1) {
+         uint64_t src_span = (uint64_t)SRC_STRIDE_LEN * (STRIDE_NUM - 1) + (uint64_t)MAX_DATA_SIZE * STRIDE_NUM;
+         uint64_t dst_span = (uint64_t)DST_STRIDE_LEN * (STRIDE_NUM - 1) + (uint64_t)MAX_DATA_SIZE * STRIDE_NUM;
+         uint64_t max_span = src_span > dst_span ? src_span : dst_span;
+         if (max_span > required_size)
+             required_size = max_span;
+     }
+     mmap_size = (int)((required_size - 1 + HUGEPAGE_SIZE) / HUGEPAGE_SIZE * HUGEPAGE_SIZE);
 
     memset(pt_input, 0, THREAD_NUM * sizeof(struct sdma_mixed_th));
     memset(send_src_addr, 0, THREAD_NUM * sizeof(char *));
