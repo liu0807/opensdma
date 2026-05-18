@@ -8,6 +8,7 @@ OpenCode 插件工作区，用于开发测试三个自定义技能：`prd`、`ra
 - **prd** - 生成 PRD 并转换为 `prd.json`
 - **ralph** - 每次迭代使用全新上下文的自主开发循环
 - **reviewer** - Ralph 循环每轮迭代后的代码审查关卡
+- **skill-creator** - 创建新技能、修改和改进现有技能。触发词：创建技能、写技能、生成技能
 
 ## 关键目录
 - `.opencode/` - 插件配置（`package.json` 依赖 `@opencode-ai/plugin`）和技能文件
@@ -33,6 +34,7 @@ OpenCode 插件工作区，用于开发测试三个自定义技能：`prd`、`ra
 - 当需求描述中没有详细说明的地方，必须按照 prd skill 的要求向用户追问澄清问题，禁止自行构造需求细节或假设参数
 - 在用户没有明确指示“开始写代码”或“启动 Ralph 循环”之前，禁止执行 Ralph 循环或开始编写代码
 - **定位问题时，定位清楚之后，列出修改方案并详细描述如何修改及为什么要这样修改，征询用户同意后才能修改代码**
+- **不伪造任何内容**：未读过的文件不可断言其内容；未执行过的命令不可伪造其输出；未验证过的事实不可作为结论；所有引用必须可追溯
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
