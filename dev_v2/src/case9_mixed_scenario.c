@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <sys/shm.h>
 #include <sys/time.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/sysinfo.h>
 #include <numaif.h>
@@ -988,8 +989,8 @@ int case9_mixed_scenario(struct sdma_test_input *cmd)
         return SDMA_TEST_FAILED;
     }
 
-    srandom(getpid());
-    key = random();
+    srandom((unsigned int)getpid() ^ (unsigned int)time(NULL));
+    key = (key_t)((random() & 0xFFFF) | ((getpid() & 0xFFFF) << 16));
     for (i = 0; i < PROC_NUM; i++) {
         pid = fork();
         if (pid == 0) {
