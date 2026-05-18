@@ -1,0 +1,331 @@
+================================================================================
+  sdma-dk 交叉编译 RPM 构建日志 (含所有失败尝试)
+  日期: 2026-05-18
+  目标: 在 x86_64 WSL FedoraLinux-44 上交叉编译 sdma-dk 为 ARM aarch64
+================================================================================
+
+【问题描述】
+在 x86_64 的 FedoraLinux-44 WSL 中执行以下命令构建 sdma-dk RPM：
+  rpmbuild --nodeps -ba ~/rpmbuild/SOURCES/sdma-dk.spec
+
+报错：
+  cc1: error: bad value 'armv8-a+crc' for '-march=' switch [-Werror]
+因为项目为鲲鹏 aarch64 设计，CMakeLists.txt 硬编码了 -march=armv8-a+crc，
+x86_64 的 gcc 不认识此参数。
+
+================================================================================
+总览：完整步骤 (含失败尝试)
+================================================================================
+
+一、安装交叉编译工具链（成功）
+二、创建交叉编译 Toolchain 文件（成功）
+三、修改 CMakeLists.txt — 移除硬编码架构（经历失败尝试）
+四、修改 tool/CMakeLists.txt — 移除不需要的库依赖（成功）
+五、修改 spec 文件 — 适配交叉编译（经历失败尝试）
+六、解决 numa 库缺失问题（经历失败尝试）
+七、最终构建（成功）
+
+================================================================================
+一、安装交叉编译工具链
+================================================================================
+
+1.1 搜索可用的 aarch64 交叉编译包:
+  dnf search aarch64
+  输出:
+    gcc-aarch64-linux-gnu.x86_64
+    gcc-c++-aarch64-linux-gnu.x86_64
+    sysroot-aarch64-fc44-glibc.noarch
+
+1.2 安装 aarch64 交叉编译器（成功）:
+  sudo dnf install -y gcc-aarch64-linux-gnu
+  验证: /usr/sbin/aarch64-linux-gnu-gcc --version
+
+1.3 安装 sysroot（aarch64 的 glibc 运行库）（成功）:
+  sudo dnf install -y sysroot-aarch64-fc44-glibc
+  sysroot 路径: /usr/aarch64-redhat-linux/sys-root/fc44
+
+1.4 (可选) 安装交叉编译 C++ 支持:
+  sudo dnf install -y gcc-c++-aarch64-linux-gnu
+  （本工程只需要 C，此步骤可选）
+
+================================================================================
+二、创建交叉编译 Toolchain 文件
+================================================================================
+
+2.1 创建 toolchain-aarch64.cmake（成功）:
+  位置: ~/rpmbuild/SOURCES/toolchain-aarch64.cmake
+  内容:
+    set(CMAKE_SYSTEM_NAME Linux)
+    set(CMAKE_SYSTEM_PROCESSOR aarch64)
+    set(CMAKE_C_COMPILER /usr/sbin/aarch64-linux-gnu-gcc)
+    set(CMAKE_SYSROOT /usr/aarch64-redhat-linux/sys-root/fc44)
+    set(CMAKE_FIND_ROOT_PATH /usr/aarch64-redhat-linux/sys-root/fc44)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+================================================================================
+三、修改 CMakeLists.txt — 移除硬编码架构选项
+================================================================================
+
+3.1 原始 CMakeLists.txt 概况:
+  cmake_minimum_required(VERSION 3.12.1)
+  project(sdma)
+  set(CMAKE_FLAGS_PUBILC " -Wall -Werror ...")
+  set(CMAKE_FLAGS_ARM64 " -march=armv8-a+crc")
+  if(CROSS_COMPILE)
+      set(CMAKE_C_COMPILER "${CROSS_COMPILE}")
+  else()
+      set(CMAKE_C_COMPILER "/usr/bin/gcc")
+  endif()
+  set(CMAKE_C_FLAGS "${CMAKE_FLAGS_PUBILC} ${CMAKE_FLAGS_ARM64}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_FLAGS_ARM64}")
+  message(STATUS "CMAKE_C_FLAGS = ${CMAKE_C_FLAGS}")
+  add_subdirectory(lib)
+  add_subdirectory(tool)
+
+【失败尝试 3a】直接尝试构建 — 未修改 CMakeLists.txt
+  - 在 %build 中指定 -DCMAKE_TOOLCHAIN_FILE 运行 rpmbuild
+  - 结果: 仍然报错 cc1: error: bad value 'armv8-a+crc'
+  - 原因: CMakeLists.txt 中直接 set(CMAKE_FLAGS_ARM64) 并拼入 C_FLAGS，
+          无论 toolchain 如何设置，这个 armv8 标志都会传入编译器。
+
+【失败尝试 3b】仅删除 set(CMAKE_C_COMPILER "/usr/bin/gcc")，保留 ARM64 flags
+  - 结果: 仍然报错 armv8-a+crc 无法识别
+  - 原因: x86_64 的 aarch64 交叉编译器本身也不认识 crc 扩展语法
+
+【成功方案 3c】:
+  问题: aarch64-linux-gnu-gcc 也不支持 -march=armv8-a+crc 参数，
+        该 CRC 扩展选项是华为鲲鹏 GCC 特有。
+  解决: 彻底移除 ARM64 相关的 flags。
+        同时移除 set(CMAKE_C_COMPILER "/usr/bin/gcc") 和 else() 分支，
+        避免 CMake 在 %build 阶段跳过 toolchain 文件中的编译器设置。
+
+3.2 修改后的 CMakeLists.txt:
+  cmake_minimum_required(VERSION 3.12.1)
+  project(sdma C)
+  set(CMAKE_FLAGS_PUBILC " -Wall -Werror ...")
+  if(CROSS_COMPILE)
+      set(CMAKE_C_COMPILER "${CROSS_COMPILE}")
+  endif()
+  set(CMAKE_C_FLAGS "${CMAKE_FLAGS_PUBILC}")
+  message(STATUS "CMAKE_C_FLAGS = ${CMAKE_C_FLAGS}")
+  add_subdirectory(lib)
+  add_subdirectory(tool)
+
+  关键变化:
+  (1) project(sdma) → project(sdma C)
+      限制 Language 为 C，避免 CMake 自动检测 CXX 编译器。
+      原 toolchain 文件只有 gcc，没有 g++，会报 CXX 找不到。
+  (2) 删除 set(CMAKE_FLAGS_ARM64) 行
+  (3) 删除 set(CMAKE_CXX_FLAGS "${CMAKE_FLAGS_ARM64}") 行
+  (4) CMAKE_C_FLAGS 改为 ${CMAKE_FLAGS_PUBILC}，不再拼接 ARM64
+  (5) 删除 else() 分支中的 set(CMAKE_C_COMPILER "/usr/bin/gcc")
+      避免覆盖 toolchain 文件设好的交叉编译器
+
+================================================================================
+四、修改 tool/CMakeLists.txt — 移除 memkind 依赖
+================================================================================
+
+4.1 原始内容:
+  target_link_libraries(sdma_tool memkind numa sdma_dk c)
+
+【失败尝试 4a】完整保留 memkind 并尝试在 sysroot 中安装 memkind
+  - memkind 没有现成的 aarch64 RPM 包（未在 Koji 上找到）
+  - memkind 还依赖 jemalloc/tbb，依赖链复杂
+  - 决定: 放弃 memkind，本工程实际并未使用
+
+【成功方案】:
+  target_link_libraries(sdma_tool sdma_dk c)
+  移除了 memkind 和 numa（numa 会在第 6 步补充）
+
+  （注意: 第 6 步补充 numa 后，实际为:
+    target_link_libraries(sdma_tool sdma_dk numa c)）
+
+================================================================================
+五、修改 spec 文件
+================================================================================
+
+5.1 原始 spec 文件 %build 部分:
+  %build
+  cd build
+  cmake ../ ...
+  make
+
+【失败尝试 5a】不加 unset CFLAGS，直接 rpmbuild
+  - 结果: 链接阶段报错 "relocation R_X86_64_32S against ... can not be used"
+  - 原因: rpmbuild 自动注入 x86_64 的 CFLAGS/LDFLAGS，导致混合架构冲突
+  - 修复: 在 cmake 前加 unset CFLAGS CXXFLAGS FFLAGS FCFLAGS LDFLAGS CC CXX
+
+【失败尝试 5b】%install 中 cp 顺序错误:
+  原始:
+    cp ./build/lib/libsdma_dk.so %{buildroot}%{_libdir}
+    cp ./lib/mdk_sdma.h %{buildroot}%{_includedir}
+  - rpmlint 报错: "%{_libdir} and %{_includedir} do not exist"
+  - 原因: 没有先 mkdir -p 这些目录
+  - 修复: 在 cp 之前先 mkdir -p 创建目录
+
+【失败尝试 5c】cmake 命令中不指定 CMAKE_TOOLCHAIN_FILE:
+  - cmake 自动检测到系统 gcc (x86_64 本地)，编译出 x86_64 的 .so
+  - 失败: 需要 aarch64 而非 x86_64
+  - 修复: 必须加 -DCMAKE_TOOLCHAIN_FILE=%{_sourcedir}/toolchain-aarch64.cmake
+
+【失败尝试 5d】使用 set(CMAKE_C_COMPILER ...) 而非 toolchain 文件:
+  在 cmake 命令中加 -DCMAKE_C_COMPILER=/usr/sbin/aarch64-linux-gnu-gcc
+  - 结果: CMake 检测 sp 不兼容，仍使用本地库
+  - 原因: 仅设 compiler 不够，CMake 找不到 aarch64 sysroot
+  - 修复: 必须使用完整的 toolchain 文件 (含 CMAKE_SYSROOT)
+
+【失败尝试 5e】缺 chrpath 工具:
+  - %install 中 chrpath -d ... 失败: command not found
+  - 修复: sudo dnf install -y chrpath
+
+【成功方案】:
+  %build
+  cd build
+  unset CFLAGS CXXFLAGS FFLAGS FCFLAGS LDFLAGS CC CXX
+  cmake ../ -DCMAKE_TOOLCHAIN_FILE=%{_sourcedir}/toolchain-aarch64.cmake
+  make -j$(nproc)
+
+  %install
+  %{__rm} -rf %{buildroot}
+  install -d %{buildroot}
+  mkdir -p %{buildroot}%{_libdir}
+  mkdir -p %{buildroot}%{_includedir}
+  mkdir -p %{buildroot}%{_bindir}
+  cp ./build/lib/libsdma_dk.so %{buildroot}%{_libdir}
+  cp ./lib/mdk_sdma.h %{buildroot}%{_includedir}
+  cp ./build/tool/sdma_tool %{buildroot}%{_bindir}
+  chrpath -d %{buildroot}%{_bindir}/sdma_tool
+
+================================================================================
+六、解决 numa 库缺失问题（最关键也最曲折）
+================================================================================
+
+6.1 背景:
+  在步骤四中我们暂时移除了 numa 链接:
+    target_link_libraries(sdma_tool sdma_dk c)
+  但发现程序实际使用了 numa 接口 (numa_alloc, numa_free 等)，
+  编译时 gcc 有隐式声明警告，链接时若有 numa 也必须能找到。
+
+  恢复 numa 后:
+    target_link_libraries(sdma_tool sdma_dk numa c)
+  链接报错: cannot find -lnuma
+
+【失败尝试 6a】从宿主机复制 x86_64 的 libnuma 到 sysroot:
+  sudo cp /usr/lib64/libnuma.so.1 /usr/aarch64-redhat-linux/sys-root/.../
+  结果:
+    skipping incompatible /usr/aarch64-redhat-linux/sys-root/fc44/usr/lib64/libnuma.so
+  cause: x86_64 的 .so 是 x86-64 架构，aarch64 链接器拒绝使用
+
+【失败尝试 6b】尝试 dnf install numactl-devel 获取 aarch64 版本:
+  sudo dnf install --installroot=/usr/aarch64-redhat-linux/sys-root/fc44 numactl-libs.aarch64
+  结果: 失败，dnf --installroot 需要额外设置 repo，过程复杂
+
+【失败尝试 6c】手动下载 numactl-libs 的 noarch 包:
+  误以为 noarch 包可跨架构使用：
+  curl -L .../numactl-libs-2.0.19-4.fc44.noarch.rpm
+  结果: noarch 只对不依赖架构的纯文本/java脚本有用，
+        libnuma.so 依赖架构，没有 noarch 版本的 .so
+  验证: curl 返回 404，根本不存在 noarch 版本
+
+【成功方案 6d】从 Fedora Koji 下载 aarch64 版本的 numactl-libs RPM:
+  (1) 确认版本号: dnf info numactl-libs 显示 2.0.19-4.fc44
+  (2) 拼接 Koji URL:
+      包名: numactl
+      版本: 2.0.19
+      发布: 4.fc44
+      架构: aarch64
+      文件: numactl-libs-2.0.19-4.fc44.aarch64.rpm
+      URL:
+      https://kojipkgs.fedoraproject.org/packages/numactl/2.0.19/4.fc44/aarch64/numactl-libs-2.0.19-4.fc44.aarch64.rpm
+  (3) 下载、解压、安装到 sysroot:
+      curl -L -o /tmp/numactl-libs.rpm '...'
+      cd /tmp
+      rpm2cpio numactl-libs.rpm | cpio -idmv
+      sudo cp usr/lib64/libnuma.so.1.0.0 /usr/aarch64-redhat-linux/sys-root/fc44/usr/lib64/
+      cd /usr/aarch64-redhat-linux/sys-root/fc44/usr/lib64/
+      sudo ln -sf libnuma.so.1.0.0 libnuma.so.1
+      sudo ln -sf libnuma.so.1.0.0 libnuma.so
+  (4) 复制头文件（从本地 x86_64 复制，头文件与架构无关）:
+      sudo cp /usr/include/numa.h /usr/aarch64-redhat-linux/sys-root/fc44/usr/include/
+      sudo cp /usr/include/numaif.h /usr/aarch64-redhat-linux/sys-root/fc44/usr/include/
+  (5) 在 tool/CMakeLists.txt 恢复 numa:
+      最终: target_link_libraries(sdma_tool sdma_dk numa c)
+
+【关键经验】aarch64 链接时的搜索顺序和关键检查:
+  - CMAKE_SYSROOT 设置后，链接器首先在 sysroot 内找库
+  - find_library 搜索结果可以使用 CMAKE_FIND_ROOT_PATH 限制
+  - 如果 sysroot 中没有对应的 .so，会 fallback 到宿主系统路径
+  - 但宿主系统的是 x86_64，链接器会报 "skipping incompatible"
+  - 所以必须把 aarch64 的 .so 放到 sysroot 中
+
+================================================================================
+七、最终构建
+================================================================================
+
+7.1 清理旧构建产物（避免缓存干扰）:
+  rm -rf ~/rpmbuild/BUILD/sdma-dk-1.0.0 && rm -rf ~/rpmbuild/BUILDROOT
+
+7.2 重新构建（成功）:
+  rpmbuild --nodeps -ba ~/rpmbuild/SOURCES/sdma-dk.spec
+
+  输出日志关键片段:
+  [100%] Built target sdma_dk
+  [100%] Built target sdma_tool
+  + exit 0
+  Wrote: ~/rpmbuild/SRPMS/sdma-dk-1.0.0-18.fc44.src.rpm
+  Wrote: ~/rpmbuild/RPMS/x86_64/sdma-dk-1.0.0-18.fc44.x86_64.rpm
+
+7.3 产物验证（成功）:
+  file ~/rpmbuild/BUILD/sdma-dk-1.0.0/build/lib/libsdma_dk.so
+  → ELF 64-bit LSB shared object, ARM aarch64, version 1 (SYSV), dynamically linked
+  file ~/rpmbuild/BUILD/sdma-dk-1.0.0/build/tool/sdma_tool
+  → ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV), dynamically linked
+
+================================================================================
+附：手动编译的方式（在 BUILD 目录下独立执行，不需要通过 rpmbuild）
+================================================================================
+
+  cd ~/rpmbuild/BUILD/sdma-dk-1.0.0
+  rm -rf build && mkdir build && cd build
+  cmake ../ -DCMAKE_TOOLCHAIN_FILE=~/rpmbuild/SOURCES/toolchain-aarch64.cmake
+  make VERBOSE=1
+
+  注意: 手动编译时需要手动 unset CFLAGS 等环境变量。
+
+================================================================================
+关键文件路径汇总
+================================================================================
+
+~/rpmbuild/SOURCES/toolchain-aarch64.cmake          - 交叉编译 CMake 配置
+~/rpmbuild/SOURCES/sdma-dk.spec                     - RPM spec（已适配交叉编译）
+~/rpmbuild/SOURCES/sdma-dk-1.0.0.tar.gz             - 源码压缩包（含修改后的 CMakeLists）
+~/rpmbuild/BUILD/sdma-dk-1.0.0/build/lib/libsdma_dk.so  - 交叉编译产物 (aarch64)
+~/rpmbuild/BUILD/sdma-dk-1.0.0/build/tool/sdma_tool     - 交叉编译产物 (aarch64)
+~/rpmbuild/RPMS/x86_64/sdma-dk-1.0.0-18.fc44.x86_64.rpm - 最终 RPM 包
+~/rpmbuild/SRPMS/sdma-dk-1.0.0-18.fc44.src.rpm           - 源码 SRPM 包
+
+================================================================================
+失败尝试汇总（以作教训）
+================================================================================
+
+┌─────────┬─────────────────────────────────────────────┬──────────────────────────────────┐
+│  编号   │ 失败操作                                    │ 原因与教训                       │
+├─────────┼─────────────────────────────────────────────┼──────────────────────────────────┤
+│  1      │ 不修改 CMakeLists，直接交叉编译              │ -march=armv8-a+crc 硬编码必须移除 │
+│  2      │ 只删 C_COMPILER 路径，保留 ARM64 flags       │ x86_64 交叉编译器也不认识 crc    │
+│  3      │ project(sdma) 不加 C                       │ cmake 检测 CXX 找不到 g++        │
+│  4      │ %build 不加 unset CFLAGS                   │ rpmbuild 自动注入 x86_64 编译参数 │
+│  5      │ 不提前 mkdir -p 安装目录                    │ %install 时目录不存在 cp 失败     │
+│  6      │ 不指定 toolchain 文件，仅设 CMAKE_C_COMPILER│ CMake 找不到 sysroot，链接本地库  │
+│  7      │ 缺 chrpath 工具                            │ %install 中 chrpath command fail  │
+│  8      │ 复制 x86_64 的 libnuma 到 sysroot           │ skipping incompatible，架构不匹配 │
+│  9      │ dnf --installroot 安装 aarch64 包           │ 配置复杂，需额外修 repo           │
+│  10     │ 尝试找 noarch 版本的 libnuma                │ libnuma.so 依赖 CPU 架构，无 noarch│
+└─────────┴─────────────────────────────────────────────┴──────────────────────────────────┘
+
+================================================================================
+  日志结束
+================================================================================
