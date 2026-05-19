@@ -86,6 +86,22 @@ wsl -d FedoraLinux-44 -- bash -c "cd /home/lyx/rpmbuild/BUILD/sdma-dk-1.0.0/buil
 
 > 二进制拷贝自动执行，无需用户确认
 
+4. **创建/更新 bin/README.md** — 记录二进制依赖信息（仅在 README 不存在或需要更新时执行）。使用 `readelf -d` 获取实际 NEEDED 库列表，写入 README：
+
+```
+# sdma_tool
+
+## 系统要求
+| 依赖 | 说明 |
+|------|------|
+| glibc >= 2.34 | GNU C 库（部分静态链接） |
+| libnuma.so.1 | NUMA 库 |
+| libsdma_dk.so | sdma 用户态驱动库（与 sdma_tool 同目录部署） |
+| hisi_sdma 内核驱动 | 鲲鹏 SDMA 硬件驱动 |
+```
+
+> 此步骤自动执行，无需用户确认
+
 向用户报告编译成功，包含：
 - 版本目录
 - 二进制路径
