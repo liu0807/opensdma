@@ -1,6 +1,6 @@
 ---
 name: prd
-description: "生成 PRD 并转换为 prd.json。当用户需要创建产品需求文档、编写需求文档、为功能写 PRD、规划新功能、将需求转换为 prd.json 格式或整理功能需求时使用。包括生成结构化 PRD 和转换为 Ralph JSON 格式两个功能。注意：仅用于文档产出阶段，不用于代码实现或开发循环。"
+description: "生成 PRD 并转换为 prd.json。触发词：创建 PRD、生成 PRD、为 XXX 写 PRD、转换 PRD、转换为 prd.json"
 user-invocable: true
 ---
 
@@ -99,11 +99,12 @@ user-invocable: true
 - [ ] 具体的可验证标准
 - [ ] 另一个标准
 - [ ] Typecheck/lint 通过
+- [ ] **[仅 UI 故事]** 使用 dev-browser skill 在浏览器中验证
 ```
 
 **重要：**
 - 验收标准必须可验证，不能模糊。"正常工作" 是坏标准。"删除前按钮显示确认对话框" 是好标准。
-- Typecheck/Test/browser 验证等通用标准的添加规则见"转换 PRD 为 prd.json"部分的验收标准规则，此处不重复。
+- **对于任何有 UI 变更的故事：** 始终包含 "使用 dev-browser skill 在浏览器中验证" 作为验收标准。
 
 #### 4. 功能需求
 编号的功能列表：
@@ -124,7 +125,6 @@ user-invocable: true
 - 已知约束或依赖
 - 与现有系统的集成点
 - 性能需求
-- **不包含具体技术方案选型**（如框架、库、算法实现细节）
 
 #### 8. 成功指标
 如何衡量成功？
@@ -245,8 +245,6 @@ user-invocable: true
 
 将现有的 markdown PRD 转换为 `prd.json` 格式，供 Ralph 循环使用。
 
-**project 值推导规则：** 优先从仓库根目录名获取；其次从 PRD 标题中的功能领域推断；最后询问用户。
-
 ### 输出格式
 
 ```json
@@ -322,7 +320,22 @@ Ralph 每次迭代启动一个全新的 AI 实例，没有之前工作的记忆�
 - "良好的用户体验"
 - "处理边缘情况"
 
-每个故事的验收标准末尾始终追加 `"Typecheck 通过"`。对于有逻辑可测试的故事还追加 `"测试通过"`。对于 UI 故事还追加 `"使用 dev-browser skill 在浏览器中验证"`。
+#### 始终包含作为最终标准：
+```
+"Typecheck 通过"
+```
+
+对于有逻辑可测试的故事，还包含：
+```
+"测试通过"
+```
+
+#### 对于更改 UI 的故事，还包含：
+```
+"使用 dev-browser skill 在浏览器中验证"
+```
+
+前端故事在视觉验证之前不算完成。Ralph 将使用 dev-browser skill 导航到页面，与 UI 交互，并确认更改有效。
 
 ### 转换规则
 
@@ -331,7 +344,7 @@ Ralph 每次迭代启动一个全新的 AI 实例，没有之前工作的记忆�
 3. **优先级：** 基于依赖顺序，然后按文档顺序
 4. **所有故事：** `passes: false` 和空 `notes`
 5. **branchName：** 从功能名称派生，kebab-case，前缀 `ralph/`
-6. **始终添加：** 将 "Typecheck 通过" 添加到每个故事的验收标准末尾
+6. **始终添加：** 将 "Typecheck 通过" 添加到每个故事的验收标准
 
 ### 拆分大型 PRD
 
@@ -438,10 +451,10 @@ Ralph 每次迭代启动一个全新的 AI 实例，没有之前工作的记忆�
 
 1. 读取当前的 `prd.json`（如果存在）
 2. 检查 `branchName` 是否与新功能的分支名称不同
-3. 如果不同且 `progress.txt` 包含已完成迭代的历史记录（超过初始头部 3 行以上——头部指文件开头的项目名称和时间戳标记行）：
+3. 如果不同且 `progress.txt` 有超出头部的内容：
    - 创建归档文件夹：`archive/YYYY-MM-DD-feature-name/`
    - 将当前的 `prd.json` 和 `progress.txt` 复制到归档
-   - 用新头部行重置 `progress.txt`（仅保留项目名称和时间戳）
+   - 用新的头部重置 `progress.txt`
 
 ### 保存前检查清单
 

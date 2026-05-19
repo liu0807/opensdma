@@ -1,0 +1,75 @@
+{
+  "assertions": [
+    {
+      "text": "输出了结构化审核结果（Status + 检查清单格式）",
+      "passed": true,
+      "evidence": "review-report.md 包含 ## Review Results、**Status:** FAIL、以及多张表格格式的检查清单（代码质量问题表、边界情况表、一致性表等），结构清晰完整"
+    },
+    {
+      "text": "至少发现 1 个代码质量问题（如缓冲区溢出、内存泄漏、空指针等）",
+      "passed": true,
+      "evidence": "发现 5 个严重缺陷（strcpy 栈缓冲区溢出 L24、strcpy 堆缓冲区溢出 L16、recs[10] 数组越界 L31、off-by-one L27、数据竞争 L27-29）和 3 个中等缺陷（malloc 未检查空指针、资源泄漏、tmp 内存泄漏），远超 1 个的要求"
+    },
+    {
+      "text": "对每个发现的问题给出了修复建议",
+      "passed": true,
+      "evidence": "'Fix Recommendations' 表格（L108-118）为每个问题提供了具体修复代码，如 strncpy/snprintf 替代、添加越界检查、添加 free_record/destroy_buffer 函数等"
+    },
+    {
+      "text": "输出格式包含 ## Review Results 和 **Status:** 标记",
+      "passed": true,
+      "evidence": "review-report.md L3 有 '## Review Results'，L5 有 '**Status:** FAIL'，完全匹配断言要求"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "claims": [
+    {
+      "claim": "审核了两个 C 文件（buggy.c 和 review-me.c）",
+      "type": "factual",
+      "verified": true,
+      "evidence": "review-report.md L8-9 明确列出两个文件路径"
+    },
+    {
+      "claim": "发现 5 个严重缺陷和 3 个中等缺陷",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Problem Summary 节列出 5 个严重（L91-96）和 3 个中等（L99-102）缺陷"
+    },
+    {
+      "claim": "严重缺陷包括缓冲区溢出、off-by-one、数据竞争",
+      "type": "factual",
+      "verified": true,
+      "evidence": "L92-96 明确列出 strcpy 溢出、recs 越界、off-by-one、缺少锁保护"
+    },
+    {
+      "claim": "发现内存泄漏缺陷",
+      "type": "factual",
+      "verified": true,
+      "evidence": "L101-102 指出 'tmp 内存泄漏' 及两文件均无资源释放函数"
+    },
+    {
+      "claim": "检查了边界情况处理",
+      "type": "factual",
+      "verified": true,
+      "evidence": "第 3 节边界情况表格（L59-69）系统检查了空字符串、空缓冲区、并发等场景"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "所有断言均检查了报告内容的存在性，但没有任何断言验证修复建议的正确性（如建议的 strncpy 用法是否准确、free_record 是否覆盖所有分配路径）——可以增加断言检查某条具体建议的技术正确性"
+      }
+    ],
+    "overall": "断言覆盖了结构化输出、质量问题发现、修复建议等核心维度，评估有效。可以补充对修复建议技术准确性的验证断言以提升区分度。"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "eval_name": "prd-to-json",
+  "prompt": "把这份 PRD 转换成 prd.json 格式，准备开始开发",
+  "assertions": [
+    "每个用户故事有 id、title、description、acceptanceCriteria、priority 字段",
+    "验收标准最后一条是 'Typecheck 通过'",
+    "用户故事按依赖顺序排序（前置功能在前）",
+    "prd.json 中所有用户的 passes 为 false",
+    "branchName 从功能名称派生",
+    "如果已有 prd.json 则先归档到 archive/ 目录"
+  ]
+}

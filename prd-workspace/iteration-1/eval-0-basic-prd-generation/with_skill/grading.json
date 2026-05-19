@@ -1,0 +1,100 @@
+{
+  "assertions": [
+    {
+      "text": "向用户提出了 3-5 个澄清问题（选择题格式）后再生成 PRD",
+      "passed": true,
+      "evidence": "Transcript 记录: 'agent 先问了 5 个带字母选项的澄清问题（1A,2C,3A,4D,5B）'，符合 3-5 个的要求且为选择题格式"
+    },
+    {
+      "text": "最终输出了结构化 PRD 文档，包含简介、目标、用户故事、功能需求、成功指标等部分",
+      "passed": true,
+      "evidence": "outputs/prd-data-mover.md 包含：简介(L1-5)、目标(L7-14)、用户故事(L15-55)、功能需求(L57-66)、成功指标(L85-90) 等完整章节"
+    },
+    {
+      "text": "PRD 保存到 tasks/prd-* 路径",
+      "passed": false,
+      "evidence": "PRD 保存位置为 outputs/prd-data-mover.md，不在 tasks/prd-* 路径下。全局搜索确认不存在 tasks/ 目录"
+    },
+    {
+      "text": "用户故事的大小适合单次 Ralph 迭代（2-3 句话可描述变更）",
+      "passed": true,
+      "evidence": "4 个用户故事（US-001~US-004）的描述均为 1 句话，简洁明确，完全适合单次迭代完成"
+    },
+    {
+      "text": "生成的 PRD 中没有代码实现或技术设计细节",
+      "passed": false,
+      "evidence": "PRD 的 '技术考虑' 节(L78-83)包含具体技术设计细节：CLI 框架选项（Python argparse/Click、Go cobra、Rust clap）、异步任务管理（线程池或进程池）、大文件分块读写、内存映射安全等。这些属于技术设计方案而非纯粹的需求描述"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 2,
+    "total": 5,
+    "pass_rate": 0.6
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 4,
+      "Write": 1,
+      "Bash": 1,
+      "Glob": 1
+    },
+    "total_tool_calls": 7,
+    "total_steps": 5,
+    "errors_encountered": 0,
+    "output_chars": 3268,
+    "transcript_chars": 320
+  },
+  "timing": {
+    "grader_duration_seconds": 18.0
+  },
+  "claims": [
+    {
+      "claim": "PRD 包含 4 个用户故事（US-001 ~ US-004）",
+      "type": "factual",
+      "verified": true,
+      "evidence": "outputs/prd-data-mover.md L15-55 列出 4 个用户故事"
+    },
+    {
+      "claim": "每个用户故事都有验收标准",
+      "type": "factual",
+      "verified": true,
+      "evidence": "US-001 有 5 条验收标准(L20-26)，US-002 有 5 条(L30-35)，US-003 有 5 条(L40-45)，US-004 有 5 条(L50-55)"
+    },
+    {
+      "claim": "PRD 包含非目标部分",
+      "type": "factual",
+      "verified": true,
+      "evidence": "outputs/prd-data-mover.md L69-75 列出 6 条非目标"
+    },
+    {
+      "claim": "PRD 包含待解决问题",
+      "type": "factual",
+      "verified": true,
+      "evidence": "outputs/prd-data-mover.md L93-96 列出 3 个待解决问题"
+    },
+    {
+      "claim": "用户需求是关于命令行数据搬移工具",
+      "type": "factual",
+      "verified": true,
+      "evidence": "PRD 标题为 'PRD: 命令行数据搬移工具'(L1)，简介描述了命令行数据搬移功能(L3-5)"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "PRD 保存到 tasks/prd-* 路径",
+        "reason": "仅检查路径模式而不检查保存动作是否发生，会导致路径配置不同时误判——应同时检查 tasks/prd-* 和 outputs/prd-* 等多种合理路径，或检查 PRD 技能实际指定的保存位置"
+      },
+      {
+        "reason": "未覆盖的观察：PRD 包含了有价值的额外章节（非目标、待解决问题、技术考虑），这些提升了 PRD 质量但无断言覆盖。同时 '技术考虑' 节虽然违反了断言 5，但从实用角度看提供了有价值的上下文——建议评估标准考虑 PRD 内容完整性和实用性的权衡"
+      }
+    ],
+    "overall": "3/5 通过。核心产出（结构化 PRD 文档、澄清问题、合理粒度的用户故事）质量良好。两个失败点：保存路径不符合预期，以及技术考虑节混入了技术设计细节。断言的设置可考虑增加内容质量和实用性方面的评估维度。"
+  }
+}

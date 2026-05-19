@@ -1,0 +1,55 @@
+{
+  "project": "sdma-dk",
+  "branchName": "ralph/sdma-dk-async-enhancement",
+  "description": "SDMA-DK 异步传输增强 - 对 sdma-dk 库的异步传输能力进行增强，增加超时配置和回调通知功能，使上层应用能更灵活地控制异步操作。",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "异步超时配置",
+      "description": "作为 sdma-dk 用户，我希望在发起异步传输时能配置超时时间，以便在硬件无响应时能够及时恢复。",
+      "acceptanceCriteria": [
+        "新增 `sdma_async_timeout` 参数",
+        "超时取值范围 1-60 秒",
+        "超时触发时回调返回超时错误码",
+        "向后兼容：未配置时默认 5 秒",
+        "Typecheck 通过",
+        "测试通过"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "传输完成回调",
+      "description": "作为 sdma-dk 用户，我希望在异步传输完成时收到回调通知，以便及时处理传输结果。",
+      "acceptanceCriteria": [
+        "新增回调函数注册接口",
+        "回调携带传输状态和错误码",
+        "支持注册和注销回调",
+        "回调在独立线程中执行，不阻塞数据传输",
+        "Typecheck 通过",
+        "测试通过"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "异步批量传输",
+      "description": "作为 sdma-dk 用户，我希望一次提交多个缓冲区的异步传输请求，以减少多次调用开销。",
+      "acceptanceCriteria": [
+        "新增批量提交接口，支持最多 32 个缓冲区",
+        "批量提交返回唯一批次 ID",
+        "支持查询批次完成状态",
+        "与现有单缓冲异步接口共存",
+        "Typecheck 通过",
+        "测试通过"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

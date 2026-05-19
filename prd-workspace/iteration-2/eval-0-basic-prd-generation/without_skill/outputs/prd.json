@@ -1,0 +1,75 @@
+{
+  "title": "命令行数据搬移工具 PRD",
+  "version": "1.0",
+  "date": "2026-05-19",
+  "overview": "实现一个命令行数据搬移工具，用户通过命令行参数指定源地址和目标地址，支持同步和异步两种搬移模式。",
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "description": "支持通过 --src 和 --dst 命令行参数指定源地址和目标地址，地址可以是文件路径或目录路径。"
+    },
+    {
+      "id": "REQ-002",
+      "description": "支持同步模式（sync，默认）：命令发起后阻塞等待搬移完成，返回搬移结果（成功/失败、搬移字节数、耗时）。"
+    },
+    {
+      "id": "REQ-003",
+      "description": "支持异步模式（async）：命令发起后立即返回任务 ID（格式：task-<uuid>），后台执行搬移，用户可通过 --status 参数查询任务状态和结果。"
+    },
+    {
+      "id": "REQ-004",
+      "description": "异步模式下任务状态包括：pending（等待中）、running（运行中）、completed（已完成）、failed（失败）。"
+    },
+    {
+      "id": "REQ-005",
+      "description": "支持搬移进度反馈：同步模式下实时显示进度条百分比；异步模式下可通过 --status 接口查询进度百分比。"
+    },
+    {
+      "id": "REQ-006",
+      "description": "支持 --overwrite/-o 参数控制覆盖策略：指定时覆盖已存在的目标文件，默认不覆盖，跳过并提示。"
+    },
+    {
+      "id": "REQ-007",
+      "description": "支持 --recursive/-r 参数递归搬移目录下的所有文件和子目录，保持目录结构。"
+    },
+    {
+      "id": "REQ-008",
+      "description": "错误处理：源地址不存在、目标地址不可写、权限不足、磁盘空间不足等场景需给出明确、有意义的错误提示。"
+    },
+    {
+      "id": "REQ-009",
+      "description": "搬移完成后输出结果统计：总字节数、总文件数、耗时。"
+    },
+    {
+      "id": "REQ-010",
+      "description": "异步模式下支持同时运行多个任务，各任务独立互不干扰。"
+    }
+  ],
+  "cli_interface": {
+    "command": "datamover",
+    "usage": "datamover --src <source> --dst <destination> [选项]",
+    "options": [
+      { "flag": "--src <path>", "description": "源地址（必选）" },
+      { "flag": "--dst <path>", "description": "目标地址（必选）" },
+      { "flag": "-m, --mode <sync|async>", "description": "搬移模式，默认为 sync" },
+      { "flag": "-o, --overwrite", "description": "覆盖已存在的目标文件" },
+      { "flag": "-r, --recursive", "description": "递归搬移目录" },
+      { "flag": "-s, --status <task-id>", "description": "查询异步任务状态" },
+      { "flag": "-h, --help", "description": "显示帮助信息" }
+    ],
+    "examples": [
+      "datamover --src /data/file.txt --dst /backup/file.txt",
+      "datamover --src /data/dir --dst /backup/dir -m async",
+      "datamover --src /data/src --dst /data/dst -o -r",
+      "datamover --status task-a1b2c3d4"
+    ]
+  },
+  "success_criteria": [
+    "CLI 工具可正确解析 --src 和 --dst 参数",
+    "同步模式下文件可正确搬移并返回结果",
+    "异步模式下可提交任务、查询状态并获取最终结果",
+    "覆盖策略和递归搬移按预期工作",
+    "异常场景均能给出有意义的错误提示",
+    "大文件搬移功能正常，无内存泄漏"
+  ]
+}

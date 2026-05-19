@@ -1,0 +1,104 @@
+{
+  "assertions": [
+    {
+      "text": "向用户提出了 3-5 个澄清问题（选择题格式）后再生成 PRD",
+      "passed": true,
+      "evidence": "用户提供的执行描述中写明'先问了 5 个问题(1A,2B,3A,4A,5B)，收到答案后生成了 PRD'。5 个问题在 3-5 范围内，答案格式(A/B)表明采用选择题格式。"
+    },
+    {
+      "text": "最终输出了结构化 PRD 文档，包含简介、目标、用户故事、功能需求、成功指标等部分",
+      "passed": true,
+      "evidence": "输出文件 prd-cli-data-migration.md 包含：简介（第3-5行）、目标（第7-13行）、4个用户故事（第15-56行）、9个功能需求（第58-68行）、成功指标（第93-98行），此外还包含非目标、设计考虑、技术考虑、待解决问题等完整结构。"
+    },
+    {
+      "text": "PRD 保存到 tasks/prd-* 路径",
+      "passed": false,
+      "evidence": "PRD 保存在 outputs/prd-cli-data-migration.md，而非 tasks/prd-* 路径。工作区根目录存在 tasks/ 目录，但输出未写入该位置。"
+    },
+    {
+      "text": "用户故事的大小适合单次 Ralph 迭代（2-3 句话可描述变更）",
+      "passed": true,
+      "evidence": "4 个用户故事（US-001 至 US-004）的描述均为 1 句，不超过 2-3 句话的范围。每个故事聚焦单一变更（如 US-001 仅描述参数解析与校验、US-002 仅描述同步模式搬移），粒度适合单次 Ralph 迭代。"
+    },
+    {
+      "text": "生成的 PRD 中没有代码实现或技术设计细节",
+      "passed": true,
+      "evidence": "PRD 中无任何代码片段、类名、函数签名或架构图。技术考虑（第85-91行）仅描述约束依赖（如'大文件搬移必须使用流式分块读写'、'异步任务 ID 需保证单次运行内的唯一性'），没有具体实现方案或技术选型。"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 1,
+    "total": 5,
+    "pass_rate": 0.8
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 0,
+    "errors_encountered": 0,
+    "output_chars": 4027,
+    "transcript_chars": 188
+  },
+  "timing": {
+    "grader_duration_seconds": 32.0
+  },
+  "claims": [
+    {
+      "claim": "问了 5 个澄清问题（选择题格式）",
+      "type": "factual",
+      "verified": true,
+      "evidence": "用户提供的执行描述明确提到'先问了 5 个问题(1A,2B,3A,4A,5B)'，答案字母格式符合选择题特征"
+    },
+    {
+      "claim": "问题收到答案后才生成 PRD",
+      "type": "process",
+      "verified": true,
+      "evidence": "用户提供的执行描述写明'收到答案后生成了 PRD'，且 PRD 内容与数据搬移场景匹配"
+    },
+    {
+      "claim": "技术考虑部分只描述了约束依赖，不包含具体技术方案选型",
+      "type": "process",
+      "verified": true,
+      "evidence": "技术考虑（第85-91行）仅描述了大文件分块读写、进程内存管理、信号处理等约束，未提及具体框架或第三方库"
+    },
+    {
+      "claim": "PRD 包含 4 个用户故事",
+      "type": "factual",
+      "verified": true,
+      "evidence": "输出文件中编号 US-001 至 US-004，共 4 个"
+    },
+    {
+      "claim": "PRD 包含 9 个功能需求",
+      "type": "factual",
+      "verified": true,
+      "evidence": "输出文件中编号 FR-1 至 FR-9，共 9 个"
+    },
+    {
+      "claim": "每个用户故事验收标准都包含 Typecheck 通过",
+      "type": "factual",
+      "verified": true,
+      "evidence": "US-001 至 US-004 的验收标准最后一项均为 'Typecheck 通过'"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "PRD 保存到 tasks/prd-* 路径",
+        "reason": "该断言检查文件名和路径模式，但不验证路径是否正确指定了预期目的地。输出实际写到了 outputs/ 目录而非 tasks/ 目录——这要么是技能实现与断言不匹配，要么是断言预期与输出目录约定不统一。建议将断言改为匹配实际输出位置，或增加一个检查步骤确认技能正确地将文件写入 tasks/。"
+      },
+      {
+        "reason": "没有断言检查 PRD 内容是否与用户输入的需求描述一致。如果技能生成了一个完整但与用户需求无关的 PRD 模板，它仍会通过所有现有断言。考虑增加断言验证 PRD 内容与用户 prompt 的映射关系（如是否覆盖了'同步和异步两种模式'、'源地址和目标地址'等需求要点）。"
+      },
+      {
+        "reason": "所有用户故事验收标准都包含 'Typecheck 通过'，但当前项目（sdma-dk C 项目）可能没有 TypeScript 类型检查环境。该验收标准可能是模板残留，与项目实际情况不匹配，但没有断言覆盖这一点。"
+      }
+    ],
+    "overall": "5 条断言中 4 条通过，1 条失败。PRD 内容质量好、结构完整，但保存路径与预期不符。断言覆盖了输出存在性和结构性，但缺少对内容正确性与项目上下文的验证。"
+  }
+}

@@ -1,0 +1,22 @@
+[
+  {"query": "为数据搬移功能写个 PRD", "should_trigger": true},
+  {"query": "生成 PRD", "should_trigger": true},
+  {"query": "创建 PRD", "should_trigger": true},
+  {"query": "把这个需求转换成 prd.json", "should_trigger": true},
+  {"query": "编写需求文档", "should_trigger": true},
+  {"query": "帮我规划一下这个新功能，先写 PRD", "should_trigger": true},
+  {"query": "把这几个功能点整理成产品需求文档", "should_trigger": true},
+  {"query": "转 prd 格式", "should_trigger": true},
+  {"query": "为新功能生成 PRD 文档", "should_trigger": true},
+  {"query": "需要写一份 PRD，描述异步传输增强功能", "should_trigger": true},
+  {"query": "把代码编译一下看看有没有错误", "should_trigger": false},
+  {"query": "实现 prd.json 中的 US-001", "should_trigger": false},
+  {"query": "开始 Ralph 循环", "should_trigger": false},
+  {"query": "审查当前的代码修改", "should_trigger": false},
+  {"query": "创建一个新 skill", "should_trigger": false},
+  {"query": "检查代码质量", "should_trigger": false},
+  {"query": "为 sdma-dk 项目写 PR", "should_trigger": false},
+  {"query": "这个 bug 怎么修", "should_trigger": false},
+  {"query": "启动自主开发循环", "should_trigger": false},
+  {"query": "分析一下这段代码的性能瓶颈", "should_trigger": false}
+]

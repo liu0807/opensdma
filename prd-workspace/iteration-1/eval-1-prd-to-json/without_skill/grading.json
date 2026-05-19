@@ -1,0 +1,106 @@
+{
+  "assertions": [
+    {
+      "text": "每个用户故事有 id、title、description、acceptanceCriteria、priority 字段",
+      "passed": false,
+      "evidence": "prd.json 中三个用户故事均使用 snake_case 的 acceptance_criteria（非 camelCase 的 acceptanceCriteria），且均缺少 priority 字段。三个故事只有 id、title、description、acceptance_criteria 四个字段。"
+    },
+    {
+      "text": "验收标准最后一条是 'Typecheck 通过'",
+      "passed": false,
+      "evidence": "prd.json 中 US-001 验收标准最后一条为「向后兼容：未配置时默认 5 秒」，US-002 为「回调在独立线程中执行，不阻塞数据传输」，US-003 为「与现有单缓冲异步接口共存」。无一以 'Typecheck 通过' 结尾。"
+    },
+    {
+      "text": "用户故事按依赖顺序排序（前置功能在前）",
+      "passed": true,
+      "evidence": "US-001（超时配置）→ US-002（回调）→ US-003（批量传输），逻辑上超时是回调的前置条件，回调是批量传输的前置条件。排序正确。"
+    },
+    {
+      "text": "prd.json 中所有用户的 passes 为 false",
+      "passed": false,
+      "evidence": "prd.json 中不存在 users 数组或 passes 字段，无法验证此断言。"
+    },
+    {
+      "text": "branchName 从功能名称派生",
+      "passed": false,
+      "evidence": "prd.json 中不存在 branchName 字段。"
+    },
+    {
+      "text": "如果已有 prd.json 则先归档到 archive/ 目录",
+      "passed": false,
+      "evidence": "outputs 目录中仅有 prd.json，无 archive/ 子目录。无法确认是否存在前序 prd.json，因此无法验证归档行为。根据「不确定时 FAIL」原则判定。"
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 5,
+    "total": 6,
+    "pass_rate": 0.17
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 2,
+      "Write": 1
+    },
+    "total_tool_calls": 3,
+    "total_steps": 7,
+    "errors_encountered": 0,
+    "output_chars": 1188,
+    "transcript_chars": 165
+  },
+  "timing": {
+    "grader_duration_seconds": 0.0
+  },
+  "claims": [
+    {
+      "claim": "生成的 prd.json 包含 3 个用户故事",
+      "type": "factual",
+      "verified": true,
+      "evidence": "prd.json 中 user_stories 数组包含 US-001、US-002、US-003 共 3 个条目"
+    },
+    {
+      "claim": "prd.json 内容来自 sample-prd.md 的结构转换",
+      "type": "process",
+      "verified": true,
+      "evidence": "prd.json 中的标题、描述、用户故事内容、验收标准、功能需求等均逐项对应 sample-prd.md 中的内容"
+    },
+    {
+      "claim": "JSON 结构包含 goals, non_goals, technical_considerations, success_metrics 等扩展字段",
+      "type": "factual",
+      "verified": true,
+      "evidence": "prd.json 有 title, description, goals, user_stories, functional_requirements, non_goals, technical_considerations, success_metrics 共 8 个顶级字段"
+    },
+    {
+      "claim": "prd.json 是格式正确的 JSON",
+      "type": "quality",
+      "verified": true,
+      "evidence": "文件被成功解析，无语法错误"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "每个用户故事有 id、title、description、acceptanceCriteria、priority 字段",
+        "reason": "该断言中的 acceptanceCriteria（camelCase）与输出中的 acceptance_criteria（snake_case）仅是命名风格差异，且「priority」字段是 prd.json 规范字段但源 PRD 本身未提供优先级信息。agent 忠实于输入数据转换，不应因源材料未提供的字段而被扣分。建议断言应与 prd.json 的预期 schema 对齐，并说明是否 agent 应自动添加默认值。"
+      },
+      {
+        "assertion": "验收标准最后一条是 'Typecheck 通过'",
+        "reason": "断言要求的内容与源 PRD（sample-prd.md）不匹配——源 PRD 的验收标准中没有 'Typecheck 通过'。agent 是对输入做格式转换而非生成内容，因此本断言在此场景下不适用。"
+      },
+      {
+        "assertion": "prd.json 中所有用户的 passes 为 false",
+        "reason": "prd.json 中没有 users/passes 字段。这个断言似乎适用于另一种 prd.json schema 或项目工作流，不适用于基本的 PRD-to-JSON 转换任务。"
+      },
+      {
+        "assertion": "branchName 从功能名称派生",
+        "reason": "prd.json 中没有 branchName 字段，该字段不在当前转换任务的输出范围内。"
+      }
+    ],
+    "overall": "多条断言与当前任务不匹配（源 PRD 转 JSON），导致 agent 在实质正确的输出上因不相关的约束而失败。建议将断言集按子任务分离：基础转换任务只验证 JSON 结构正确性和内容完整性，高级任务（含分支名、归档等）单独评估。当前 agent 的 prd.json 输出格式正确、内容完整、结构合理。"
+  }
+}

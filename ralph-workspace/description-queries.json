@@ -1,0 +1,22 @@
+[
+  {"query": "开始 Ralph 循环", "should_trigger": true},
+  {"query": "运行 Ralph", "should_trigger": true},
+  {"query": "使用 Ralph 开发", "should_trigger": true},
+  {"query": "启动自主开发循环", "should_trigger": true},
+  {"query": "开始写代码", "should_trigger": true},
+  {"query": "启动开发流程", "should_trigger": true},
+  {"query": "开始实现 prd.json", "should_trigger": true},
+  {"query": "执行自动化开发", "should_trigger": true},
+  {"query": "继续 Ralph 循环", "should_trigger": true},
+  {"query": "启动开发循环", "should_trigger": true},
+  {"query": "生成 PRD", "should_trigger": false},
+  {"query": "写需求文档", "should_trigger": false},
+  {"query": "审查代码", "should_trigger": false},
+  {"query": "检查代码质量", "should_trigger": false},
+  {"query": "创建一个新 skill", "should_trigger": false},
+  {"query": "编译代码", "should_trigger": false},
+  {"query": "这个 bug 怎么修", "should_trigger": false},
+  {"query": "为功能写测试", "should_trigger": false},
+  {"query": "分析性能", "should_trigger": false},
+  {"query": "画架构图", "should_trigger": false}
+]

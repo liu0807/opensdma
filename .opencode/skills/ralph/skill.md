@@ -1,6 +1,6 @@
 ---
 name: ralph
-description: "自主开发循环，每次迭代使用全新上下文。触发词：开始 Ralph 循环、运行 Ralph、使用 Ralph 开发、启动自主开发循环"
+description: "自主开发循环，每次迭代使用全新上下文。当用户说开始 Ralph 循环、运行 Ralph、使用 Ralph 开发、启动自主开发循环、开始写代码、启动开发流程、开始实现、执行自动化开发、继续开发、启动开发循环时使用。注意：仅用于执行 prd.json 中的用户故事，不用于生成 PRD 或代码审查。"
 user-invocable: true
 ---
 

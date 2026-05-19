@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "eval_name": "review-code-static",
+  "prompt": "审查这个代码文件，找出所有潜在缺陷和安全隐患",
+  "expected_output": "逐行代码审查，列出每个缺陷的严重等级和修复建议",
+  "assertions": [
+    "发现了 strcpy 缓冲区溢出风险",
+    "发现了 create_record 中 malloc 未检查 NULL",
+    "发现了 process_records 中数组越界风险（count > 9）",
+    "发现了 process_records 中内存泄漏（recs 中 data 未释放）",
+    "输出了安全/严重等级分类"
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "assertions": [
+    {
+      "text": "每个用户故事有 id、title、description、acceptanceCriteria、priority 字段",
+      "passed": true,
+      "evidence": "prd.json 中三个用户故事 US-001/US-002/US-003 均包含 id、title、description、acceptanceCriteria（数组）、priority（数值）字段。例如 US-001: {\"id\":\"US-001\",\"title\":\"异步超时配置\",\"description\":\"作为 sdma-dk 用户...\",\"acceptanceCriteria\":[...],\"priority\":1}"
+    },
+    {
+      "text": "验收标准最后一条是 'Typecheck 通过'",
+      "passed": true,
+      "evidence": "US-001 acceptanceCriteria[4]=\"Typecheck 通过\"、US-002 acceptanceCriteria[4]=\"Typecheck 通过\"、US-003 acceptanceCriteria[4]=\"Typecheck 通过\"，每个故事验收标准最后一条均为 'Typecheck 通过'"
+    },
+    {
+      "text": "用户故事按依赖顺序排序（前置功能在前）",
+      "passed": true,
+      "evidence": "三个故事 priority 依次为 1、2、3：US-001 超时配置（基础能力）→ US-002 回调通知（依赖超时机制）→ US-003 批量传输（依赖回调基础），符合前置功能在前、后置功能在后的依赖顺序"
+    },
+    {
+      "text": "prd.json 中所有用户的 passes 为 false",
+      "passed": true,
+      "evidence": "US-001: \"passes\":false、US-002: \"passes\":false、US-003: \"passes\":false，所有三个用户故事的 passes 字段均为 false"
+    },
+    {
+      "text": "branchName 从功能名称派生",
+      "passed": true,
+      "evidence": "branchName=\"ralph/async-transfer-enhancement\"，项目描述为 \"SDMA-DK 异步传输增强\"，branchName 包含功能名称的英文翻译 \"async-transfer-enhancement\"，且使用了项目约定的 \"ralph/\" 前缀"
+    },
+    {
+      "text": "如果已有 prd.json 则先归档到 archive/ 目录",
+      "passed": true,
+      "evidence": "此 eval 的源输入文件为 sample-prd.md（markdown 文件），outputs 目录中只有新生成的 prd.json，无 archive/ 子目录。条件（已有 prd.json）未满足，断言条件为真（vacuously true）。prd-workspace 下也未发现 archive/ 目录"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 3,
+      "Write": 1,
+      "Bash": 0
+    },
+    "total_tool_calls": 4,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 1150,
+    "transcript_chars": 178
+  },
+  "timing": {
+    "grader_duration_seconds": 25.0
+  },
+  "claims": [
+    {
+      "claim": "prd.json 包含 3 个用户故事",
+      "type": "factual",
+      "verified": true,
+      "evidence": "prd.json 中 userStories 数组包含 3 个元素：US-001、US-002、US-003"
+    },
+    {
+      "claim": "所有验收标准内容从源 PRD 完整保留（不含新加条目）",
+      "type": "quality",
+      "verified": true,
+      "evidence": "US-001 源验收标准 4 条全部保留在 output 中（新增 'Typecheck 通过' 作为第 5 条），US-002、US-003 同理。比较 sample-prd.md 与 prd.json 确认"
+    },
+    {
+      "claim": "用户故事描述从源 PRD 正确提取",
+      "type": "quality",
+      "verified": true,
+      "evidence": "三个用户故事的 description 字段内容与 sample-prd.md 中对应描述完全一致"
+    },
+    {
+      "claim": "branchName 使用了 'ralph/' 前缀约定",
+      "type": "factual",
+      "verified": true,
+      "evidence": "branchName='ralph/async-transfer-enhancement'，前缀 'ralph/' 匹配项目约定"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "branchName 从功能名称派生",
+        "reason": "此断言较弱——即使 branchName 只是 'feature/abc123' 也会通过。建议增加约定约束检查，例如要求前缀匹配项目规范（如 'ralph/'）或要求采用 kebab-case"
+      },
+      {
+        "assertion": "如果已有 prd.json 则先归档到 archive/ 目录",
+        "reason": "此断言是条件性的，首次运行时条件不满足即可 vacuously pass。建议在 eval 设计中预先放置一个旧 prd.json，以实际验证归档行为"
+      },
+      {
+        "reason": "没有断言验证源 PRD 内容被完整且正确地转换到 JSON。例如检查 acceptanceCriteria 条目数、description 是否匹配源内容。目前 6 条断言均通过但遗漏了内容保真度的验证"
+      }
+    ],
+    "overall": "所有 6 条断言均通过。以 skill 方式生成的 prd.json 结构完整，包含了所有必要字段。缺点是断言中有两条（branchName 派生、archive 归档）区分度不足——它们对明显有缺陷的输出也可能通过。建议在未来 eval 迭代中增加内容保真度断言，并给 archive 断言设置实际前置条件来测试"
+  }
+}

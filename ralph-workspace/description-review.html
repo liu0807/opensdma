@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Ralph Skill 触发描述优化</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#f5f5f5; color:#333; padding:30px; }
+h1 { font-size:22px; }
+.subtitle { color:#666; font-size:13px; margin-bottom:20px; }
+.card { background:white; border-radius:8px; padding:20px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+.query-row { display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #f0f0f0; }
+.query-row:last-child { border-bottom:none; }
+.query-text { flex:1; font-size:14px; }
+.query-id { font-size:12px; color:#999; width:24px; text-align:right; }
+.switch { position:relative; width:48px; height:26px; flex-shrink:0; }
+.switch input { opacity:0; width:0; height:0; }
+.slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#ccc; border-radius:26px; transition:0.3s; }
+.slider:before { content:"✗"; position:absolute; height:20px; width:20px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.3s; display:flex; align-items:center; justify-content:center; font-size:11px; color:#999; }
+.switch input:checked + .slider { background:#27ae60; }
+.switch input:checked + .slider:before { content:"✓"; transform:translateX(22px); color:#27ae60; }
+.match-badge { font-size:11px; padding:2px 8px; border-radius:10px; }
+.match-yes { background:#d4edda; color:#155724; }
+.match-no { background:#f8d7da; color:#721c24; }
+.buttons { display:flex; gap:10px; margin-top:20px; }
+.btn { padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-size:14px; }
+.btn-primary { background:#27ae60; color:white; }
+.btn-primary:hover { background:#219a52; }
+.btn-secondary { background:#e9ecef; color:#333; }
+.btn-secondary:hover { background:#dee2e6; }
+.stats { font-size:13px; color:#666; margin:10px 0; }
+pre { background:#f8f9fa; padding:12px; border-radius:4px; font-size:12px; margin-top:10px; max-height:300px; overflow:auto; }
+.hidden { display:none; }
+.desc-box { padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:10px; border-left:4px solid; }
+.old-desc { background:#fff3cd; border-color:#ffc107; }
+.new-desc { background:#eef8f0; border-color:#27ae60; }
+</style>
+</head>
+<body>
+
+<h1>🔁 Ralph Skill — 触发评估</h1>
+<p class="subtitle">切换每条查询的 should_trigger 状态，导出 JSON</p>
+
+<div class="desc-box old-desc">
+<strong>旧描述:</strong><br>
+<code>自主开发循环，每次迭代使用全新上下文。触发词：开始 Ralph 循环、运行 Ralph、使用 Ralph 开发、启动自主开发循环</code>
+</div>
+<div class="desc-box new-desc">
+<strong>新描述:</strong><br>
+<code>自主开发循环，每次迭代使用全新上下文。当用户说开始 Ralph 循环、运行 Ralph、使用 Ralph 开发、启动自主开发循环、开始写代码、启动开发流程、开始实现、执行自动化开发、继续开发、启动开发循环时使用。</code>
+</div>
+
+<div class="card" id="queryList"></div>
+<div class="stats" id="stats">应触发: 10 | 不应触发: 10</div>
+<div class="buttons">
+  <button class="btn btn-primary" onclick="exportJSON()">导出 JSON</button>
+  <button class="btn btn-secondary" onclick="resetAll()">重置</button>
+</div>
+<pre id="output" class="hidden"></pre>
+
+<script>
+const queries = [
+  {"query":"开始 Ralph 循环","should_trigger":true},
+  {"query":"运行 Ralph","should_trigger":true},
+  {"query":"使用 Ralph 开发","should_trigger":true},
+  {"query":"启动自主开发循环","should_trigger":true},
+  {"query":"开始写代码","should_trigger":true},
+  {"query":"启动开发流程","should_trigger":true},
+  {"query":"开始实现 prd.json","should_trigger":true},
+  {"query":"执行自动化开发","should_trigger":true},
+  {"query":"继续 Ralph 循环","should_trigger":true},
+  {"query":"启动开发循环","should_trigger":true},
+  {"query":"生成 PRD","should_trigger":false},
+  {"query":"写需求文档","should_trigger":false},
+  {"query":"审查代码","should_trigger":false},
+  {"query":"检查代码质量","should_trigger":false},
+  {"query":"创建一个新 skill","should_trigger":false},
+  {"query":"编译代码","should_trigger":false},
+  {"query":"这个 bug 怎么修","should_trigger":false},
+  {"query":"为功能写测试","should_trigger":false},
+  {"query":"分析性能","should_trigger":false},
+  {"query":"画架构图","should_trigger":false}
+];
+
+const oldKw = ['ralph','Ralph','自主开发循环','运行ralph','使用ralph'];
+const newKw = ['ralph','Ralph','自主开发循环','运行ralph','使用ralph','开始写代码','启动开发流程','开始实现','自动化开发','继续开发','启动开发循环','开发循环'];
+
+function matchOld(q) { const l=q.toLowerCase(); return oldKw.some(k=>l.includes(k.toLowerCase())); }
+function matchNew(q) { const l=q.toLowerCase(); return newKw.some(k=>l.includes(k.toLowerCase())); }
+
+function render() {
+  const list=document.getElementById('queryList'); list.innerHTML='';
+  queries.forEach((q,i)=>{
+    const om=matchOld(q.query), nm=matchNew(q.query);
+    const row=document.createElement('div'); row.className='query-row';
+    row.innerHTML=`<span class="query-id">${i+1}</span><span class="query-text">${q.query}</span><span class="match-badge ${om?'match-yes':'match-no'}">旧:${om?'触发':'不触发'}</span><span class="match-badge ${nm?'match-yes':'match-no'}">新:${nm?'触发':'不触发'}</span><label class="switch"><input type="checkbox" ${q.should_trigger?'checked':''} data-idx="${i}" onchange="toggle(${i})"><span class="slider"></span></label>`;
+    list.appendChild(row);
+  });
+  updateStats();
+}
+function toggle(i) { queries[i].should_trigger=!queries[i].should_trigger; updateStats(); }
+function updateStats() {
+  const t=queries.filter(q=>q.should_trigger).length;
+  const om=queries.filter(q=>q.should_trigger===matchOld(q.query)).length;
+  const nm=queries.filter(q=>q.should_trigger===matchNew(q.query)).length;
+  document.getElementById('stats').textContent=`应触发:${t}|不应触发:${queries.length-t}|旧匹配:${om}/20|新匹配:${nm}/20`;
+}
+function exportJSON() { document.getElementById('output').classList.remove('hidden'); document.getElementById('output').textContent=JSON.stringify(queries,null,2); }
+function resetAll() { queries.forEach((q,i)=>{q.should_trigger=i<10;}); render(); }
+render();
+</script>
+</body>
+</html>

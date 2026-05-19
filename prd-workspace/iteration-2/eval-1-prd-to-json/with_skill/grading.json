@@ -1,0 +1,109 @@
+{
+  "assertions": [
+    {
+      "text": "每个用户故事有 id、title、description、acceptanceCriteria、priority 字段",
+      "passed": true,
+      "evidence": "prd.json 中 3 个故事 (US-001, US-002, US-003) 全部包含 id、title、description、acceptanceCriteria、priority 字段。此外还包含 passes 和 notes 字段（非必须）。"
+    },
+    {
+      "text": "验收标准最后一条是 'Typecheck 通过'",
+      "passed": false,
+      "evidence": "所有 3 个故事的 acceptanceCriteria 数组最后一条均为 '测试通过'，而非 'Typecheck 通过'。'Typecheck 通过' 是倒数第二条。例如 US-001: [..., 'Typecheck 通过', '测试通过']，最后一条为 '测试通过'。"
+    },
+    {
+      "text": "用户故事按依赖顺序排序（前置功能在前）",
+      "passed": true,
+      "evidence": "故事按 priority 1→2→3 升序排列：US-001 超时配置（基础）→ US-002 回调通知（依赖超时）→ US-003 批量传输（依赖回调机制）。依赖逻辑合理。"
+    },
+    {
+      "text": "prd.json 中所有用户的 passes 为 false",
+      "passed": true,
+      "evidence": "US-001: passes=false, US-002: passes=false, US-003: passes=false — 全部置为 false。"
+    },
+    {
+      "text": "branchName 从功能名称派生",
+      "passed": true,
+      "evidence": "branchName='ralph/sdma-dk-async-enhancement'，project='sdma-dk'，功能描述为'异步传输增强'。'async-enhancement' 清晰派生自功能关键字。"
+    },
+    {
+      "text": "如果已有 prd.json 则先归档到 archive/ 目录",
+      "passed": true,
+      "evidence": "archive/ 目录不存在，且 outputs/ 仅有 1 个 prd.json，说明执行前无已有 prd.json。条件未触发，无违规。"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 1,
+    "total": 6,
+    "pass_rate": 0.83
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 1,
+      "Write": 1
+    },
+    "total_tool_calls": 2,
+    "total_steps": 5,
+    "errors_encountered": 0,
+    "output_chars": 1806,
+    "transcript_chars": 350
+  },
+  "timing": {
+    "grader_duration_seconds": 22.0
+  },
+  "claims": [
+    {
+      "claim": "加载了改进后的 prd skill（v2）",
+      "type": "process",
+      "verified": false,
+      "evidence": "无法从输出文件验证 skill 版本号。只有输出结果可用，无执行脚本记录使用的 skill 版本。"
+    },
+    {
+      "claim": "将 sample-prd.md 转换为 prd.json",
+      "type": "process",
+      "verified": true,
+      "evidence": "outputs/ 中存在 prd.json，格式正确，内容为 PRD 结构。"
+    },
+    {
+      "claim": "输出包含 project='sdma-dk'",
+      "type": "factual",
+      "verified": true,
+      "evidence": "prd.json 第 2 行: \"project\": \"sdma-dk\""
+    },
+    {
+      "claim": "branchName='ralph/sdma-dk-async-enhancement'",
+      "type": "factual",
+      "verified": true,
+      "evidence": "prd.json 第 3 行: \"branchName\": \"ralph/sdma-dk-async-enhancement\""
+    },
+    {
+      "claim": "3 个故事全部 passes=false",
+      "type": "factual",
+      "verified": true,
+      "evidence": "prd.json US-001/002/003 的 passes 字段均为 false"
+    },
+    {
+      "claim": "每个故事末尾追加了 Typecheck 通过和测试通过",
+      "type": "factual",
+      "verified": true,
+      "evidence": "每个故事的 acceptanceCriteria 最后两条均为 'Typecheck 通过' 和 '测试通过'"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "验收标准最后一条是 'Typecheck 通过'",
+        "reason": "此断言要求'最后一条'必须是 'Typecheck 通过'，但实际最后一条为 '测试通过'。如果是执行者有意将两者都作为验收标准，建议将断言改为'验收标准包含 Typecheck 通过和测试通过'，以正确反映意图。"
+      },
+      {
+        "reason": "缺少 transcript 文件（执行脚本），无法验证执行过程是否正确。建议保存完整执行日志以支持更深入的评估。"
+      }
+    ],
+    "overall": "5/6 断言通过。关键失败是断言 2：验收标准最后一条为'测试通过'而非'Typecheck 通过'。其余断言全部满足。PRD 内容结构完整，字段齐全，依赖顺序合理。"
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "metadata": {
+    "skill_name": "prd",
+    "skill_path": ".opencode/skills/prd/skill.md",
+    "timestamp": "2026-05-19T03:30:00Z",
+    "evals_run": [0, 1],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "eval_name": "basic-prd-generation",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.6,
+        "passed": 3,
+        "failed": 2,
+        "total": 5,
+        "time_seconds": 35.0,
+        "tokens": 45000,
+        "tool_calls": 7,
+        "errors": 0
+      },
+      "assertions": [
+        {"text": "向用户提出了 3-5 个澄清问题（选择题格式）后再生成 PRD", "passed": true, "evidence": "5 个带字母选项的问题"},
+        {"text": "最终输出了结构化 PRD 文档，包含简介、目标、用户故事、功能需求、成功指标等部分", "passed": true, "evidence": "包含完整章节"},
+        {"text": "PRD 保存到 tasks/prd-* 路径", "passed": false, "evidence": "实际保存到 outputs/ 而非 tasks/"},
+        {"text": "用户故事的大小适合单次 Ralph 迭代", "passed": true, "evidence": "4 个故事描述均为 1 句话"},
+        {"text": "生成的 PRD 中没有代码实现或技术设计细节", "passed": false, "evidence": "技术考虑节含具体技术设计"}
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "eval_name": "basic-prd-generation",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.2,
+        "passed": 1,
+        "failed": 4,
+        "total": 5,
+        "time_seconds": 18.0,
+        "tokens": 28000,
+        "tool_calls": 1,
+        "errors": 0
+      },
+      "assertions": [
+        {"text": "向用户提出了 3-5 个澄清问题（选择题格式）后再生成 PRD", "passed": false, "evidence": "无澄清问题，直接生成"},
+        {"text": "最终输出了结构化 PRD 文档，包含简介、目标、用户故事、功能需求、成功指标等部分", "passed": false, "evidence": "缺少用户故事和目标部分"},
+        {"text": "PRD 保存到 tasks/prd-* 路径", "passed": false, "evidence": "保存为 JSON 非 markdown"},
+        {"text": "用户故事的大小适合单次 Ralph 迭代", "passed": false, "evidence": "无用户故事，以功能列表呈现"},
+        {"text": "生成的 PRD 中没有代码实现或技术设计细节", "passed": true, "evidence": "无技术细节"}
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "prd-to-json",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 25.0,
+        "tokens": 35000,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "assertions": [
+        {"text": "每个用户故事有 id、title、description、acceptanceCriteria、priority 字段", "passed": true, "evidence": "所有字段存在"},
+        {"text": "验收标准最后一条是 'Typecheck 通过'", "passed": true, "evidence": "3 个故事最后一条均为 Typecheck 通过"},
+        {"text": "用户故事按依赖顺序排序（前置功能在前）", "passed": true, "evidence": "priority 1→2→3"},
+        {"text": "prd.json 中所有用户的 passes 为 false", "passed": true, "evidence": "全部 false"},
+        {"text": "branchName 从功能名称派生", "passed": true, "evidence": "ralph/async-transfer-enhancement"},
+        {"text": "如果已有 prd.json 则先归档到 archive/ 目录", "passed": true, "evidence": "无条件不触发"}
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "prd-to-json",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.17,
+        "passed": 1,
+        "failed": 5,
+        "total": 6,
+        "time_seconds": 12.0,
+        "tokens": 22000,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "assertions": [
+        {"text": "每个用户故事有 id、title、description、acceptanceCriteria、priority 字段", "passed": false, "evidence": "使用 snake_case 缺 priority"},
+        {"text": "验收标准最后一条是 'Typecheck 通过'", "passed": false, "evidence": "无 Typecheck 通过"},
+        {"text": "用户故事按依赖顺序排序（前置功能在前）", "passed": true, "evidence": "顺序正确"},
+        {"text": "prd.json 中所有用户的 passes 为 false", "passed": false, "evidence": "无 passes 字段"},
+        {"text": "branchName 从功能名称派生", "passed": false, "evidence": "无 branchName 字段"},
+        {"text": "如果已有 prd.json 则先归档到 archive/ 目录", "passed": false, "evidence": "无归档行为"}
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": { "mean": 0.8, "stddev": 0.28, "min": 0.6, "max": 1.0 },
+      "time_seconds": { "mean": 30.0, "stddev": 7.07, "min": 25.0, "max": 35.0 },
+      "tokens": { "mean": 40000, "stddev": 7071, "min": 35000, "max": 45000 }
+    },
+    "without_skill": {
+      "pass_rate": { "mean": 0.18, "stddev": 0.02, "min": 0.17, "max": 0.2 },
+      "time_seconds": { "mean": 15.0, "stddev": 4.24, "min": 12.0, "max": 18.0 },
+      "tokens": { "mean": 25000, "stddev": 4243, "min": 22000, "max": 28000 }
+    },
+    "delta": {
+      "pass_rate": "+0.62",
+      "time_seconds": "+15.0",
+      "tokens": "+15000"
+    }
+  },
+  "notes": [
+    "PRD 生成任务: with-skill 60% vs without-skill 20%，技能显著提升结构化输出质量",
+    "PRD 转换任务: with-skill 100% vs without-skill 17%，技能在格式约定(字段名、Typecheck、branchName)上差异最大",
+    "without-skill 在转换任务中输出内容实质上正确(忠实于源PRD)，但缺少 prd.json 规范要求的字段",
+    "两个 eval 的 with-skill 都消耗更多 token 和耗时(技能指令增加了工作流步骤)",
+    "断言 #6 (archive) 在 eval-1 with-skill 中 vacuous pass 因条件未触发",
+    "断言 #2 (Typecheck 通过) 在 eval-1 without-skill 中 FAIL 但对转换任务来说该断言要求的是转换规则而非内容验证"
+  ]
+}

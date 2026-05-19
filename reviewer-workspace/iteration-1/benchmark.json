@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "skill_name": "reviewer",
+    "skill_path": ".opencode/skills/reviewer/skill.md",
+    "timestamp": "2026-05-19T04:00:00Z",
+    "evals_run": [0, 1],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 0, "eval_name": "review-current-diff", "configuration": "with_skill", "run_number": 1,
+      "result": {"pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "time_seconds": 28.0, "tokens": 38000, "tool_calls": 5, "errors": 0}
+    },
+    {
+      "eval_id": 0, "eval_name": "review-current-diff", "configuration": "without_skill", "run_number": 1,
+      "result": {"pass_rate": 0.25, "passed": 1, "failed": 3, "total": 4, "time_seconds": 22.0, "tokens": 32000, "tool_calls": 3, "errors": 0}
+    },
+    {
+      "eval_id": 1, "eval_name": "review-code-static", "configuration": "with_skill", "run_number": 1,
+      "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 20.0, "tokens": 30000, "tool_calls": 4, "errors": 0}
+    },
+    {
+      "eval_id": 1, "eval_name": "review-code-static", "configuration": "without_skill", "run_number": 1,
+      "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 15.0, "tokens": 25000, "tool_calls": 3, "errors": 0}
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0},
+      "time_seconds": {"mean": 24.0, "stddev": 5.66, "min": 20.0, "max": 28.0},
+      "tokens": {"mean": 34000, "stddev": 5657, "min": 30000, "max": 38000}
+    },
+    "without_skill": {
+      "pass_rate": {"mean": 0.62, "stddev": 0.53, "min": 0.25, "max": 1.0},
+      "time_seconds": {"mean": 18.5, "stddev": 4.95, "min": 15.0, "max": 22.0},
+      "tokens": {"mean": 28500, "stddev": 4949, "min": 25000, "max": 32000}
+    },
+    "delta": {"pass_rate": "+0.38", "time_seconds": "+5.5", "tokens": "+5500"}
+  },
+  "notes": [
+    "Eval-0 (代码检视): with-skill 100% vs without-skill 25% — skill 在输出格式结构化和修复建议上差异最大",
+    "Eval-1 (静态分析): 两者都是 100% — LLM 天然擅长代码 bug 检测，但 skill 确保输出一致性和内容完整性",
+    "Without-skill 在 eval-0 发现更多 bugs(12)但格式不符合 assertions",
+    "with-skill 耗时多 30%(skill 指令增加了结构化输出步骤)"
+  ]
+}

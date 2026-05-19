@@ -1,0 +1,22 @@
+[
+  {"query": "审查当前代码修改", "should_trigger": true},
+  {"query": "检查代码质量", "should_trigger": true},
+  {"query": "检视这次的代码实现", "should_trigger": true},
+  {"query": "看一下代码有没有问题", "should_trigger": true},
+  {"query": "代码审查", "should_trigger": true},
+  {"query": "review 一下我写的代码", "should_trigger": true},
+  {"query": "帮我做代码检视", "should_trigger": true},
+  {"query": "检查代码质量", "should_trigger": true},
+  {"query": "代码走查", "should_trigger": true},
+  {"query": "帮我 review 这个文件", "should_trigger": true},
+  {"query": "生成 PRD", "should_trigger": false},
+  {"query": "开始 Ralph 循环", "should_trigger": false},
+  {"query": "实现 US-001", "should_trigger": false},
+  {"query": "编译代码", "should_trigger": false},
+  {"query": "创建一个新 skill", "should_trigger": false},
+  {"query": "运行测试", "should_trigger": false},
+  {"query": "为这个功能写测试用例", "should_trigger": false},
+  {"query": "这个 bug 怎么修", "should_trigger": false},
+  {"query": "画架构图", "should_trigger": false},
+  {"query": "性能分析", "should_trigger": false}
+]

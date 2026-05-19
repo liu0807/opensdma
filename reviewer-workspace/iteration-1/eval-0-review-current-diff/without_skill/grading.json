@@ -1,0 +1,89 @@
+{
+  "assertions": [
+    {
+      "text": "输出了结构化审核结果（Status + 检查清单格式）",
+      "passed": false,
+      "evidence": "输出按 `## buggy.c`、`## review-me.c`、`## Cross-File Consistency`、`## Summary` 章节组织，有结构化布局，但缺少 Status 标记（如 `**Status:** PASS/FAIL`）和检查清单格式（如 `[ ]`/`[x]` 条目）。输出为叙述性 bug 列表，非 checklist 格式。"
+    },
+    {
+      "text": "至少发现 1 个代码质量问题（如缓冲区溢出、内存泄漏、空指针等）",
+      "passed": true,
+      "evidence": "共发现 12 个问题：buggy.c 6 个（含 2 缓冲区溢出、1 数组溢出、malloc 未判空、内存泄漏），review-me.c 6 个（off-by-one 越界、数据竞争、malloc 未判空、内存泄漏、缺少 mutex destroy、缺少边界检查）。详见 review-report.md 各 `### Bugs Found` 章节。"
+    },
+    {
+      "text": "对每个发现的问题给出了修复建议",
+      "passed": false,
+      "evidence": "所有 12 个问题仅描述了问题现象和潜在影响（如 'If input > 63 chars, stack buffer overflow'），没有任何一条给出具体的修复建议（如 '改用 strncpy/snprintf'、'添加 NULL 检查'、'添加 free_record 函数'）。无 `Fix Recommendations` 或类似章节。"
+    },
+    {
+      "text": "输出格式包含 ## Review Results 和 **Status:** 标记",
+      "passed": false,
+      "evidence": "输出中无 `## Review Results` 标题（使用了 `## buggy.c`、`## review-me.c`、`## Cross-File Consistency`、`## Summary`），无 `**Status:**` 标记。"
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 3,
+    "total": 4,
+    "pass_rate": 0.25
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 0,
+    "errors_encountered": 0,
+    "output_chars": 2894,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "grader_duration_seconds": 5.0
+  },
+  "claims": [
+    {
+      "claim": "buggy.c 存在 6 个 bugs",
+      "type": "factual",
+      "verified": true,
+      "evidence": "review-report.md buggy.c 章节列出了 6 个编号问题（1-6），涵盖溢出、内存泄漏、未判空"
+    },
+    {
+      "claim": "review-me.c 存在 6 个 bugs",
+      "type": "factual",
+      "verified": true,
+      "evidence": "review-report.md review-me.c 章节列出了 6 个编号问题（1-6），涵盖越界、数据竞争、内存泄漏等"
+    },
+    {
+      "claim": "两文件共享共同反模式（malloc 未检查、无资源清理、无边界检查、无错误传播）",
+      "type": "quality",
+      "verified": true,
+      "evidence": "`Cross-File Consistency` 章节明确列出了 4 个共同反模式"
+    },
+    {
+      "claim": "Summary 表格覆盖 Memory safety、Concurrency、Resource mgmt、Error handling、Code quality 五个维度",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Summary 表格包含上述 5 个 category 行，且为两文件分别计数"
+    },
+    {
+      "claim": "发现的所有问题均有具体行号引用",
+      "type": "factual",
+      "verified": true,
+      "evidence": "每个问题均标注了行号（如 L24、L16、L31-32、L14 等）"
+    }
+  ],
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "输出了结构化审核结果（Status + 检查清单格式）",
+        "reason": "当前输出确实结构化（有章节、有编号），但 'Status + 检查清单' 含义不精确。如果期望的是类似 `**Status:** FAIL` + `[ ]` 格式的明确标记，则断言合理。建议在断言中明确写出期望的具体标记字符串。"
+      },
+      {
+        "assertion": "输出格式包含 ## Review Results 和 **Status:** 标记",
+        "reason": "这条断言实际上是断言 1 中 'Status + 检查清单格式' 的具体化要求，但两者要求不完全一致。断言 1 要求更模糊（'检查清单格式'），断言 4 更具体。如果断言 4 通过，断言 1 的 Status 部分自然满足——两条断言存在冗余。建议合并或明确区分。"
+      },
+      {
+        "reason": "没有断言覆盖 '修复建议是否正确/合理' 这一质量维度。断言 3 仅要求 '给出了修复建议'，但如果输出的修复建议是错误或有害的，仍能通过。建议添加断言验证修复建议的正确性。"
+      }
+    ],
+    "overall": "Assertions check presence of format elements and bug discovery count, but don't verify fix suggestion quality or correctness. Two assertions (1 and 4) partially overlap."
+  }
+}

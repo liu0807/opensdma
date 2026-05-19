@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PRD Skill 触发描述优化</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; padding: 30px; }
+h1 { font-size: 22px; margin-bottom: 5px; }
+.subtitle { color: #666; font-size: 13px; margin-bottom: 20px; }
+.card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.query-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.query-row:last-child { border-bottom: none; }
+.query-text { flex: 1; font-size: 14px; }
+.query-id { font-size: 12px; color: #999; width: 24px; text-align: right; }
+.switch { position: relative; width: 48px; height: 26px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; border-radius: 26px; transition: 0.3s; }
+.slider:before { content: "✗"; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999; }
+.switch input:checked + .slider { background: #667eea; }
+.switch input:checked + .slider:before { content: "✓"; transform: translateX(22px); color: #667eea; }
+.match-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+.match-yes { background: #d4edda; color: #155724; }
+.match-no { background: #f8d7da; color: #721c24; }
+.buttons { display: flex; gap: 10px; margin-top: 20px; }
+.btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.btn-primary { background: #667eea; color: white; }
+.btn-primary:hover { background: #5a6fd6; }
+.btn-secondary { background: #e9ecef; color: #333; }
+.btn-secondary:hover { background: #dee2e6; }
+.stats { font-size: 13px; color: #666; margin: 10px 0; }
+pre { background: #f8f9fa; padding: 12px; border-radius: 4px; font-size: 12px; margin-top: 10px; max-height: 300px; overflow: auto; }
+.hidden { display: none; }
+.current-desc { background: #fff3cd; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; border-left: 4px solid #ffc107; }
+</style>
+</head>
+<body>
+
+<h1>🔍 PRD Skill — 触发评估</h1>
+<p class="subtitle">切换每条查询的 should_trigger 状态，导出 JSON 后我来优化 description</p>
+
+<div class="current-desc">
+<strong>旧 description (触发词列表):</strong><br>
+<code>生成 PRD 并转换为 prd.json。触发词：创建 PRD、生成 PRD、为 XXX 写 PRD、转换 PRD、转换为 prd.json</code>
+</div>
+<div class="current-desc" style="border-left-color:#667eea;background:#eef;">
+<strong>新 description (语义驱动):</strong><br>
+<code>生成 PRD 并转换为 prd.json。当用户需要创建产品需求文档、编写需求文档、为功能写 PRD、规划新功能、将需求转换为 prd.json 格式或整理功能需求时使用。包括生成结构化 PRD 和转换为 Ralph JSON 格式两个功能。注意：仅用于文档产出阶段，不用于代码实现或开发循环。</code>
+</div>
+
+<div class="card" id="queryList"></div>
+
+<div class="stats" id="stats">应触发: 10 | 不应触发: 10 | 当前匹配: ?</div>
+
+<div class="buttons">
+  <button class="btn btn-primary" onclick="exportJSON()">导出 JSON</button>
+  <button class="btn btn-secondary" onclick="resetAll()">重置</button>
+</div>
+
+<pre id="output" class="hidden"></pre>
+
+<script>
+const queries = [
+  {"query": "为数据搬移功能写个 PRD", "should_trigger": true},
+  {"query": "生成 PRD", "should_trigger": true},
+  {"query": "创建 PRD", "should_trigger": true},
+  {"query": "把这个需求转换成 prd.json", "should_trigger": true},
+  {"query": "编写需求文档", "should_trigger": true},
+  {"query": "帮我规划一下这个新功能，先写 PRD", "should_trigger": true},
+  {"query": "把这几个功能点整理成产品需求文档", "should_trigger": true},
+  {"query": "转 prd 格式", "should_trigger": true},
+  {"query": "为新功能生成 PRD 文档", "should_trigger": true},
+  {"query": "需要写一份 PRD，描述异步传输增强功能", "should_trigger": true},
+  {"query": "把代码编译一下看看有没有错误", "should_trigger": false},
+  {"query": "实现 prd.json 中的 US-001", "should_trigger": false},
+  {"query": "开始 Ralph 循环", "should_trigger": false},
+  {"query": "审查当前的代码修改", "should_trigger": false},
+  {"query": "创建一个新 skill", "should_trigger": false},
+  {"query": "检查代码质量", "should_trigger": false},
+  {"query": "为 sdma-dk 项目写 PR", "should_trigger": false},
+  {"query": "这个 bug 怎么修", "should_trigger": false},
+  {"query": "启动自主开发循环", "should_trigger": false},
+  {"query": "分析一下这段代码的性能瓶颈", "should_trigger": false}
+];
+
+// Current description keywords for matching
+// Old description keywords
+const oldKeywords = ['prd', 'prd.json', '写PRD', '生成PRD', '创建PRD', '转换PRD', '转prd'];
+// New description keywords (semantic coverage)
+const newKeywords = ['prd', 'prd.json', '产品需求', '需求文档', '写PRD', '生成PRD', '创建PRD', '转换PRD', '转prd', '规划功能', '整理需求', '文档产出'];
+
+function matchesOld(query) {
+  const q = query.toLowerCase();
+  return oldKeywords.some(k => q.includes(k.toLowerCase()));
+}
+
+function matchesNew(query) {
+  const q = query.toLowerCase();
+  return newKeywords.some(k => q.includes(k.toLowerCase()));
+}
+
+function render() {
+  const list = document.getElementById('queryList');
+  list.innerHTML = '';
+  queries.forEach((q, i) => {
+    const oldMatch = matchesOld(q.query);
+    const newMatch = matchesNew(q.query);
+    const row = document.createElement('div');
+    row.className = 'query-row';
+    row.innerHTML = `
+      <span class="query-id">${i+1}</span>
+      <span class="query-text">${q.query}</span>
+      <span class="match-badge ${oldMatch ? 'match-yes' : 'match-no'}">旧: ${oldMatch ? '触发' : '不触发'}</span>
+      <span class="match-badge ${newMatch ? 'match-yes' : 'match-no'}">新: ${newMatch ? '触发' : '不触发'}</span>
+      <label class="switch">
+        <input type="checkbox" ${q.should_trigger ? 'checked' : ''} data-idx="${i}" onchange="toggle(${i})">
+        <span class="slider"></span>
+      </label>
+    `;
+    list.appendChild(row);
+  });
+  updateStats();
+}
+
+function toggle(idx) {
+  queries[idx].should_trigger = !queries[idx].should_trigger;
+  updateStats();
+}
+
+function updateStats() {
+  const trigger = queries.filter(q => q.should_trigger).length;
+  const notrigger = queries.length - trigger;
+  const oldMatch = queries.filter(q => q.should_trigger === matchesOld(q.query)).length;
+  const newMatch = queries.filter(q => q.should_trigger === matchesNew(q.query)).length;
+  document.getElementById('stats').textContent = `应触发: ${trigger} | 不应触发: ${notrigger} | 旧描述匹配: ${oldMatch}/${queries.length} | 新描述匹配: ${newMatch}/${queries.length}`;
+}
+
+function exportJSON() {
+  const output = document.getElementById('output');
+  output.classList.remove('hidden');
+  output.textContent = JSON.stringify(queries, null, 2);
+}
+
+function resetAll() {
+  queries.forEach((q, i) => {
+    q.should_trigger = i < 10;
+  });
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
