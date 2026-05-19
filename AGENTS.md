@@ -1,7 +1,7 @@
 # Agents
 
 ## 仓库概述
-OpenCode 插件工作区，用于开发测试三个自定义技能：`prd`、`ralph`、`reviewer`。同时包含 sdma-dk（华为鲲鹏 SDMA 用户态驱动）源码，用于 Ralph 循环测试。
+OpenCode 插件工作区，用于开发测试自定义技能：`prd`、`ralph`、`reviewer`、`sdma-tool-compile`、`git-push`。同时包含 sdma-dk（华为鲲鹏 SDMA 用户态驱动）源码，用于 Ralph 循环测试。
 
 ## 自定义技能
 位于 `.opencode/skills/` 目录下，每个技能由特定短语触发（详见各目录下的 `skill.md`）：
@@ -9,6 +9,8 @@ OpenCode 插件工作区，用于开发测试三个自定义技能：`prd`、`ra
 - **ralph** - 每次迭代使用全新上下文的自主开发循环
 - **reviewer** - Ralph 循环每轮迭代后的代码审查关卡
 - **skill-creator** - 创建新技能、修改和改进现有技能。触发词：创建技能、写技能、生成技能
+- **sdma-tool-compile** - Ralph 循环后编译 sdma_tool 为二进制。触发词：编译 sdma_tool
+- **git-push** - 将代码提交并推送到远端仓库。触发词：提交代码、上传代码、git提交
 
 ## 关键目录
 - `.opencode/` - 插件配置（`package.json` 依赖 `@opencode-ai/plugin`）和技能文件
