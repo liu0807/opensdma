@@ -41,20 +41,32 @@ wsl -d FedoraLinux-44 -- cp /mnt/d/Opencode/test_ralph/<version>/src/*.h /home/l
 
 > 此步骤自动执行，无需用户确认
 
-### 第3步：编译
+### 第3步：配置 CMakeLists.txt
 
-在 WSL 中执行编译：
+在 tool/CMakeLists.txt 中设置 glibc-only 静态链接（避免二进制在目标系统上因 glibc 版本不兼容而报错）：
 
 ```
-wsl -d FedoraLinux-44 -- make -C /home/lyx/rpmbuild/BUILD/sdma-dk-1.0.0/build
+# 在 target_link_libraries 之后添加：
+target_link_options(sdma_tool PRIVATE -Wl,-Bstatic -lc -Wl,-Bdynamic)
 ```
 
+> 需要用户同意的步骤：**是**——修改 CMakeLists.txt 需要先说明并征得同意
+
+### 第4步：编译
+
+在 WSL 中执行 cmake 配置和编译：
+
+```
+wsl -d FedoraLinux-44 -- bash -c "cd /home/lyx/rpmbuild/BUILD/sdma-dk-1.0.0/build && cmake .. && make"
+```
+
+- cmake 重新配置以识别新增源文件和更新后的 CMakeLists.txt
 - 编译命令自动执行，无需用户确认
 - 捕获编译输出（stdout + stderr）
 
 > 此步骤自动执行，无需用户确认
 
-### 第4步：处理编译结果
+### 第5步：处理编译结果
 
 #### 编译成功
 
@@ -92,7 +104,7 @@ wsl -d FedoraLinux-44 -- make -C /home/lyx/rpmbuild/BUILD/sdma-dk-1.0.0/build
 
 > 修改源码需要先向用户说明修改方案，获得同意后再执行
 
-### 第5步：交叉编译环境维护
+### 第6步：交叉编译环境维护
 
 如果编译失败的原因是交叉编译环境本身的问题（如缺少依赖库、工具链不完整、CMake 配置需要更新）：
 
