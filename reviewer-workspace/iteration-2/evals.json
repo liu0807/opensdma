@@ -1,0 +1,37 @@
+{
+  "skill_name": "reviewer",
+  "evals": [
+    {
+      "id": 0,
+      "name": "buggy-code-detection",
+      "prompt": "检视当前代码，找出所有安全漏洞和代码质量问题。代码文件在 fixtures/review-sample/buggy.c。这是一个普通的 C 程序，请做完整的代码检视。",
+      "expected_output": "对 buggy.c 进行完整检视，包括缓冲区溢出、内存泄漏、数组越界等问题的检测",
+      "files": ["fixtures/review-sample/buggy.c"],
+      "assertions": [
+        "检测到 strcpy(buf, input) 缓冲区溢出风险（第24行）",
+        "检测到 strcpy(r->name, name) 缓冲区溢出风险（第16行）",
+        "检测到 recs[count] 数组越界风险（第31行，缺少 count > 9 检查）",
+        "检测到 create_record 分配的内存（Record 和 data）从未释放",
+        "检测到 recs[i]->data/name 可能为 NULL 的风险（malloc 未检查返回值）",
+        "每个发现的证据链包含存在性、影响性、触发条件、保护排除4点",
+        "严重等级标注正确（CRITICAL/HIGH/MEDIUM/LOW）"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "concurrency-bug-detection",
+      "prompt": "检视当前代码，找出所有安全漏洞和并发问题。代码文件在 fixtures/review-sample/review-me.c。这是一个多线程 C 程序，请做完整的代码检视。",
+      "expected_output": "对 review-me.c 进行完整检视，包括 off-by-one、数据竞争、内存泄漏、NULL 检查缺失等问题的检测",
+      "files": ["fixtures/review-sample/review-me.c"],
+      "assertions": [
+        "检测到 off-by-one 错误（第27行，i <= sb->size 应为 i < sb->size）",
+        "检测到数据竞争（第27-29行在无锁状态下读取 sb->buffer）",
+        "检测到 tmp[i] = sb->buffer[i] 越界访问（第28行，当 i == sb->size 时）",
+        "检测到 malloc 返回值未检查（第12、14、26行）",
+        "检测到 create_buffer 返回值未检查（第38行）",
+        "每个发现的证据链包含存在性、影响性、触发条件、保护排除4点",
+        "严重等级标注正确（CRITICAL/HIGH/MEDIUM/LOW）"
+      ]
+    }
+  ]
+}

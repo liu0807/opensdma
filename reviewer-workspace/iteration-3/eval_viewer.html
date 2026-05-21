@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Reviewer Skill 迭代-3 评估报告 — dev_v2 真实代码检视</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#333;padding:30px}
+h1{font-size:22px;margin-bottom:5px}
+h2{font-size:16px;margin:16px 0 8px;color:#444}
+.subtitle{color:#666;font-size:13px;margin-bottom:20px}
+.tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid #dee2e6}
+.tab{padding:10px 24px;cursor:pointer;border:none;background:none;font-size:14px;color:#666;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{color:#e74c3c;border-bottom-color:#e74c3c;font-weight:600}
+.tab:hover{color:#333}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:white;border-radius:8px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.card h3{font-size:15px;margin-bottom:10px;color:#333}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;background:#f8f9fa;border-bottom:2px solid #dee2e6;font-weight:600}
+td{padding:8px 10px;border-bottom:1px solid #f0f0f0}
+.pass{color:#27ae60;font-weight:600;background:#d4edda;padding:2px 8px;border-radius:4px;font-size:12px}
+.fail{color:#e74c3c;font-weight:600;background:#f8d7da;padding:2px 8px;border-radius:4px;font-size:12px}
+.better{color:#27ae60}
+.same{color:#666}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.summary-card{border-radius:8px;padding:16px;text-align:center}
+.summary-card h4{font-size:12px;color:#666;margin-bottom:6px}
+.summary-card .value{font-size:28px;font-weight:700}
+.summary-card.new{background:#e8f5e9;border:1px solid #c8e6c9}
+.summary-card.old{background:#fff3e0;border:1px solid #ffe0b2}
+.summary-card .desc{font-size:11px;color:#999;margin-top:4px}
+pre{background:#f8f9fa;padding:12px;border-radius:4px;font-size:12px;max-height:300px;overflow:auto;white-space:pre-wrap}
+.sev-critical{color:#e74c3c;font-weight:700}
+.sev-high{color:#e67e22;font-weight:700}
+.sev-medium{color:#f1c40f;font-weight:700}
+.sev-low{color:#95a5a6;font-weight:700}
+.finding-block{padding:10px;margin:6px 0;border-left:3px solid #ddd;background:#fafafa;border-radius:0 4px 4px 0}
+.finding-block .title{font-weight:600}
+.finding-block .evidence{font-size:11px;color:#666;margin-top:4px}
+.dim-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:3px;margin-right:3px}
+.dim-tag.d1{background:#e3f2fd;color:#1565c0}
+.dim-tag.d4{background:#fce4ec;color:#c62828}
+.dim-tag.d5{background:#e8f5e9;color:#2e7d32}
+.dim-tag.d6{background:#fff3e0;color:#e65100}
+.dim-tag.d7{background:#f3e5f5;color:#6a1b9a}
+.dim-tag.d8{background:#e0f7fa;color:#00695c}
+.dim-tag.d9{background:#fff8e1;color:#f57f17}
+.dim-tag.d10{background:#efebe9;color:#4e342e}
+.dim-tag.d11{background:#fce4ec;color:#880e4f}
+.missing{color:#e74c3c;font-style:italic}
+</style>
+</head>
+<body>
+
+<h1>Reviewer Skill — 迭代 3 评估</h1>
+<p class="subtitle">基于 dev_v2 真实代码（case9_mixed_scenario.c）的检视对比</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('outputs')">输出对比</div>
+  <div class="tab" onclick="switchTab('benchmark')">基准对比</div>
+  <div class="tab" onclick="switchTab('analysis')">差异分析</div>
+</div>
+
+<div id="panel-outputs" class="panel active">
+<div class="card">
+<h3>Eval: dev_v2-mixed-scenario — 审查 dev_v2/src 代码（US-005: --direction 参数）</h3>
+<table>
+<tr><th style="width:140px">衡量项</th><th>增强版 (with_skill)</th><th>旧版 (old_skill)</th></tr>
+<tr><td>状态</td><td><span class="pass">FAIL</span> (10 issues)</td><td><span class="pass">FAIL</span> (12 issues)</td></tr>
+<tr><td>报告长度</td><td>205 行</td><td>77 行</td></tr>
+<tr><td>特征扫描</td><td><span class="pass">✓ 7 类模式扫描</span></td><td><span class="fail">✗ 无结构化扫描</span></td></tr>
+<tr><td>激活维度</td><td><span class="pass">✓ 10/11 维度激活</span></td><td><span class="fail">✗ 固定4检查项</span></td></tr>
+<tr><td>证据链</td><td><span class="pass">✓ 10/10 含4点证据</span></td><td><span class="fail">✗ 仅描述式</span></td></tr>
+<tr><td>规则编号</td><td><span class="pass">✓ D1-D11 标注</span></td><td><span class="fail">✗ 无编号</span></td></tr>
+<tr><td>输入验证</td><td><span class="pass">✓ strtol errno 缺失</span></td><td><span class="fail">✗ 未检测到</span></td></tr>
+<tr><td>aarch64 弱序</td><td><span class="pass">✓ 屏障分析</span></td><td><span class="fail">✗ 未提及</span></td></tr>
+<tr><td>遗漏问题</td><td>线程错误路径 use-after-free</td><td>strtol 输入验证、aarch64 弱序</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>增强版发现的 10 个问题</h3>
+
+<div class="finding-block"><span class="sev-critical">CRITICAL</span> <span class="dim-tag d8">D8</span> <span class="title">线程函数 static ret 数据竞争</span> (case9:155)
+<div class="evidence">证据: 多个线程共享同一 static 变量，返回 &ret 地址，后结束的线程覆盖前者</div></div>
+
+<div class="finding-block"><span class="sev-critical">CRITICAL</span> <span class="dim-tag d9">D9</span> <span class="title">NULL 检测后仍解引用</span> (case9:117-121)
+<div class="evidence">证据: if(ready==NULL) 仅 print 不返回，继续 while(!(*ready))</div></div>
+
+<div class="finding-block"><span class="sev-critical">CRITICAL</span> <span class="dim-tag d8">D8</span> <span class="title">共享标志缺少 volatile/原子操作</span> (case9:383-384)
+<div class="evidence">证据: status[] / g_barrier 为普通 bool，编译器优化可导致死循环</div></div>
+
+<div class="finding-block"><span class="sev-high">HIGH</span> <span class="dim-tag d8">D8</span> <span class="title">非原子共享减操作死锁</span> (case9:580,829)
+<div class="evidence">证据: shared->finish_flag-- 非原子，双进程同时调用从 2→1 而非 0</div></div>
+
+<div class="finding-block"><span class="sev-high">HIGH</span> <span class="dim-tag d8">D8</span> <span class="title">共享内存缺少内存屏障</span> (case9:667-715)
+<div class="evidence">证据: aarch64 弱序下 pid_ready 在 process_id 之前可见，读取到未初始化值</div></div>
+
+<div class="finding-block"><span class="sev-high">HIGH</span> <span class="dim-tag d10">D10</span> <span class="title">strtol 未校验 errno</span> (main:250-329)
+<div class="evidence">证据: 所有 strtol 未设 errno=0 未检查 ERANGE/endptr==optarg</div></div>
+
+<div class="finding-block"><span class="sev-medium">MEDIUM</span> <span class="dim-tag d1">D1</span> <span class="title">错误路径 munmap(MAP_FAILED)</span> (case9:322-329)
+<div class="evidence">证据: sdma_mem_release 只检查 NULL 不检查 MAP_FAILED</div></div>
+
+<div class="finding-block"><span class="sev-medium">MEDIUM</span> <span class="dim-tag d7">D7</span> <span class="title">缺少 remove_authority</span> (case9:463,728)
+<div class="evidence">证据: add_authority 后无对应 remove，权限残留</div></div>
+
+<div class="finding-block"><span class="sev-medium">MEDIUM</span> <span class="dim-tag d11">D11</span> <span class="title">goto 标签未用 err_ 前缀</span> (case9:597-865)
+<div class="evidence">证据: 标签命名不符华为SDMA风格</div></div>
+
+<div class="finding-block"><span class="sev-low">LOW</span> <span class="dim-tag d11">D11</span> <span class="title">ALIGNMEMT 拼写错误</span> (case9:24)
+<div class="evidence">证据: #define 拼写错误，宏未使用</div></div>
+</div>
+
+<div class="card">
+<h3>旧版发现的 12 个问题（含增强版遗漏的）</h3>
+<table>
+<tr><th>严重等级</th><th>问题</th><th>增强版</th></tr>
+<tr><td><span class="sev-critical">CRITICAL</span></td><td>static ret 数据竞争</td><td class="pass">✓</td></tr>
+<tr><td><span class="sev-high">HIGH</span></td><td>线程创建后错误路径 use-after-free</td><td class="fail">✗</td></tr>
+<tr><td><span class="sev-high">HIGH</span></td><td>pthread_create 返回值未检查</td><td class="fail">✗</td></tr>
+<tr><td><span class="sev-high">HIGH</span></td><td>NULL 解引用 (ready_status_timeout_judgement)</td><td class="pass">✓</td></tr>
+<tr><td><span class="sev-medium">MEDIUM</span></td><td>sdma_mem_release break vs continue 泄漏</td><td class="fail">✗</td></tr>
+<tr><td><span class="sev-medium">MEDIUM</span></td><td>request 未显式初始化</td><td class="fail">✗</td></tr>
+<tr><td><span class="sev-medium">MEDIUM</span></td><td>硬编码 607</td><td class="fail">✗</td></tr>
+<tr><td><span class="sev-medium">MEDIUM</span></td><td>宏定义重复</td><td class="fail">✗</td></tr>
+<tr><td><span class="sev-low">LOW</span></td><td>保留标识符 __UT_SDMA_H</td><td class="fail">✗</td></tr>
+<tr><td><span class="sev-low">LOW</span></td><td>拼写错误多处</td><td class="fail">✗</td></tr>
+<tr><td><span class="sev-low">LOW</span></td><td>shm == (void *)SHM_ERR 死代码</td><td class="fail">✗</td></tr>
+<tr><td><span class="sev-low">LOW</span></td><td>numa_id < 0 死代码</td><td class="fail">✗</td></tr>
+</table>
+</div>
+</div>
+
+<div id="panel-benchmark" class="panel">
+<div class="summary-grid">
+  <div class="summary-card new">
+    <h4>增强版 断言通过率</h4>
+    <div class="value" style="color:#27ae60">100%</div>
+    <div class="desc">8/8 断言通过</div>
+  </div>
+  <div class="summary-card old">
+    <h4>旧版 断言通过率</h4>
+    <div class="value" style="color:#e65100">83.3%</div>
+    <div class="desc">5/6 断言通过</div>
+  </div>
+  <div class="summary-card new">
+    <h4>增强版 证据链覆盖率</h4>
+    <div class="value" style="color:#27ae60">100%</div>
+    <div class="desc">10/10 发现含4点证据</div>
+  </div>
+  <div class="summary-card old">
+    <h4>旧版 证据链覆盖率</h4>
+    <div class="value" style="color:#e74c3c">0%</div>
+    <div class="desc">无结构化证据</div>
+  </div>
+</div>
+
+<h2>迭代间对比</h2>
+<table>
+<tr><th>指标</th><th>迭代 2 增强版</th><th>迭代 3 增强版</th><th>变化</th></tr>
+<tr><td>测试用例</td><td>synthetic (buggy.c, review-me.c)</td><td>真实代码 (dev_v2)</td><td>更真实</td></tr>
+<tr><td>检测维度</td><td>5 通用维度</td><td>11 SDMA对齐维度</td><td class="better">粒度提升</td></tr>
+<tr><td>发现数量</td><td>7-10 issues</td><td>10 issues</td><td class="same">一致</td></tr>
+<tr><td>证据链</td><td>100%</td><td>100%</td><td class="same">保持</td></tr>
+<tr><td>aarch64 弱序分析</td><td>无</td><td>有 (#3, #5)</td><td class="better">新增</td></tr>
+<tr><td>SDMA API 细节</td><td>基础配对</td><td>pin/unpin/authority/chan生命周期</td><td class="better">更深入</td></tr>
+</table>
+
+<h2>断言过率对比</h2>
+<table>
+<tr><th>断言</th><th>增强版</th><th>旧版</th></tr>
+<tr><td>static ret 数据竞争</td><td><span class="pass">✓</span></td><td><span class="pass">✓</span></td></tr>
+<tr><td>chan API 返回值</td><td><span class="pass">✓</span></td><td><span class="pass">✓</span></td></tr>
+<tr><td>pin/unpin 配对</td><td><span class="pass">✓</span></td><td><span class="pass">✓</span></td></tr>
+<tr><td>strtol 输入验证</td><td><span class="pass">✓</span></td><td><span class="fail">✗</span></td></tr>
+<tr><td>错误路径清理</td><td><span class="pass">✓</span></td><td><span class="pass">✓</span></td></tr>
+<tr><td>修复建议</td><td><span class="pass">✓</span></td><td><span class="pass">✓</span></td></tr>
+<tr><td><strong>证据链</strong></td><td><span class="pass">✓</span></td><td><span class="fail">✗</span></td></tr>
+<tr><td><strong>D1-D11 维度</strong></td><td><span class="pass">✓</span></td><td><span class="fail">✗</span></td></tr>
+</table>
+</div>
+
+<div id="panel-analysis" class="panel">
+<div class="card">
+<h3>关键差异分析</h3>
+<table>
+<tr><th>维度</th><th>增强版优势</th><th>增强版不足</th></tr>
+<tr><td>输入验证</td><td>发现 strtol errno 缺失（旧版遗漏）</td><td>—</td></tr>
+<tr><td>并发安全</td><td>aarch64 弱序分析（屏障/volatile/原子操作）</td><td>—</td></tr>
+<tr><td>SDMA 深度</td><td>pin/unpin/authority/chan 生命周期全链路</td><td>—</td></tr>
+<tr><td>线程错误路径</td><td>—</td><td>遗漏：pthread_create 错误路径 use-after-free</td></tr>
+<tr><td>结构初始化</td><td>—</td><td>遗漏：request 零值初始化风险</td></tr>
+<tr><td>死代码检测</td><td>—</td><td>遗漏：shm==SHM_ERR、numa_id<0 死代码</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>增强版遗漏问题分析</h3>
+<p>增强版虽然发现了更深层的并发和架构问题（aarch64 弱序、非原子减），但遗漏了一些"表层"问题：</p>
+<ul style="font-size:13px;margin-top:8px;padding-left:20px;line-height:1.8">
+<li><strong>线程 error-path use-after-free</strong>（HIGH）：pthread_create 后 goto 跳转，未 join 的线程访问已释放的栈内存。增强版主要关注了 D8 的同步原语类问题，但未检查 D8 检查清单中的第 8.10 项"线程间数据传递生命周期"。</li>
+<li><strong>request 零值初始化风险</strong>（MEDIUM）：D5.8 要求检查 request 在 iwait 时正确传递，但增强版未检查 sdma_request_t 零值是否被 API 接受。</li>
+<li><strong>死代码检测</strong>（LOW）：增强版专注于高价值发现，自动过滤了低价值死代码问题。但在 strict 模式下这些也应该被报告。</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>迭代 3 改进方向</h3>
+<ol style="font-size:13px;padding-left:20px;line-height:1.8">
+<li><strong>补充 D8 检查项 8.10</strong>（线程数据生命周期）：明确要求检查 pthread_create 后错误路径的线程泄漏和 use-after-free</li>
+<li><strong>补充 D5.8 增强</strong>：增加 sdma_request_t 零值/未初始化检测项</li>
+<li><strong>增加 D11 死代码检查项</strong>：D11.10 已提到死代码，需要强化对逻辑死代码（条件永远成立/不成立）的检测</li>
+</ol>
+</div>
+</div>
+
+<script>
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'))
+  document.querySelector(`.tab[onclick*="${name}"]`).classList.add('active')
+  document.getElementById(`panel-${name}`).classList.add('active')
+}
+</script>
+</body>
+</html>

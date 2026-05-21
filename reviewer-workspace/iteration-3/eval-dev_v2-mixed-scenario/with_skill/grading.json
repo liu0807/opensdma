@@ -1,0 +1,18 @@
+{
+  "eval_id": 0,
+  "eval_name": "dev_v2-mixed-scenario",
+  "run_type": "with_skill",
+  "assertions": [
+    {"id": 0, "description": "检测到 sdma_mixed_thread 中 static int ret 的数据竞争问题", "pass": true},
+    {"id": 1, "description": "检测到 sdma_alloc_chn/sdma_init_chn 的返回值是否为 NULL 的检查", "pass": true},
+    {"id": 2, "description": "检测到 sdma_pin_umem/sdma_unpin_umem 的配对使用和错误路径清理", "pass": true},
+    {"id": 3, "description": "检测到 sdma_add_authority 的返回值检查", "pass": true},
+    {"id": 4, "description": "检测到 strtol 解析缺少下界检查（负数截断风险）", "pass": true},
+    {"id": 5, "description": "检测到错误路径的 goto 清理是否完整（未漏掉已分配资源）", "pass": true},
+    {"id": 6, "description": "每条发现包含 4 点证据链（存在性/影响性/触发条件/保护排除）", "pass": true},
+    {"id": 7, "description": "检测维度标注参考 D1-D11 规则编号", "pass": true}
+  ],
+  "passed": 8,
+  "total": 8,
+  "pass_rate": 100.0
+}

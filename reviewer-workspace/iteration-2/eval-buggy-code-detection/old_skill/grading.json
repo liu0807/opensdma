@@ -1,0 +1,17 @@
+{
+  "eval_id": 0,
+  "eval_name": "buggy-code-detection",
+  "run_type": "old_skill",
+  "assertions": [
+    {"id": 0, "description": "检测到 strcpy(buf, input) 缓冲区溢出风险（第24行）", "pass": true},
+    {"id": 1, "description": "检测到 strcpy(r->name, name) 缓冲区溢出风险（第16行）", "pass": true},
+    {"id": 2, "description": "检测到 recs[count] 数组越界风险（第31行，缺少 count > 9 检查）", "pass": true},
+    {"id": 3, "description": "检测到 create_record 分配的内存从未释放", "pass": true},
+    {"id": 4, "description": "检测到 malloc 未检查 NULL 的风险", "pass": true},
+    {"id": 5, "description": "每个发现的证据链包含存在性/影响性/触发条件/保护排除4点", "pass": false},
+    {"id": 6, "description": "严重等级标注正确", "pass": true}
+  ],
+  "passed": 6,
+  "total": 7,
+  "pass_rate": 85.7
+}

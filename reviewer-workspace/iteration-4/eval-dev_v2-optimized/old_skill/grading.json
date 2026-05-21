@@ -1,0 +1,19 @@
+{
+  "eval_id": 0,
+  "eval_name": "dev_v2-optimized",
+  "run_type": "old_skill",
+  "assertions": [
+    {"id": 0, "description": "检测到 sdma_mixed_thread 中 static int ret 的数据竞争", "pass": true},
+    {"id": 1, "description": "检测到 sdma_pin_umem/sdma_unpin_umem 的配对使用和错误路径清理", "pass": false},
+    {"id": 2, "description": "检测到 strtol 解析缺少 errno 校验", "pass": true},
+    {"id": 3, "description": "检测到线程 error-path use-after-free（pthread_create 后 goto 未 join）", "pass": false},
+    {"id": 4, "description": "检测到 sdma_request_t 零值初始化风险", "pass": false},
+    {"id": 5, "description": "检测到逻辑死代码（如 numa_id < 0 永远不成立）", "pass": false},
+    {"id": 6, "description": "每条发现包含 4 点证据链", "pass": false},
+    {"id": 7, "description": "检测维度标注参考 D1-D11 规则编号", "pass": false}
+  ],
+  "passed": 2,
+  "total": 8,
+  "pass_rate": 25.0,
+  "note": "旧版无证据链/维度标注，缺失全部3个新增检测项"
+}

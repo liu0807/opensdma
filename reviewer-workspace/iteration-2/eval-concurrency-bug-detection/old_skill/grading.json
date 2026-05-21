@@ -1,0 +1,17 @@
+{
+  "eval_id": 1,
+  "eval_name": "concurrency-bug-detection",
+  "run_type": "old_skill",
+  "assertions": [
+    {"id": 0, "description": "检测到 off-by-one 错误（第27行，i <= sb->size 应为 i < sb->size）", "pass": true},
+    {"id": 1, "description": "检测到数据竞争（第27-29行在无锁状态下读取 sb->buffer）", "pass": true},
+    {"id": 2, "description": "检测到 tmp[i] = sb->buffer[i] 越界访问（第28行，当 i == sb->size 时）", "pass": true},
+    {"id": 3, "description": "检测到 malloc 返回值未检查（第12、14、26行）", "pass": true},
+    {"id": 4, "description": "检测到 create_buffer 返回值未检查（第38行）", "pass": true},
+    {"id": 5, "description": "每个发现的证据链包含存在性/影响性/触发条件/保护排除4点", "pass": false},
+    {"id": 6, "description": "严重等级标注正确", "pass": true}
+  ],
+  "passed": 6,
+  "total": 7,
+  "pass_rate": 85.7
+}

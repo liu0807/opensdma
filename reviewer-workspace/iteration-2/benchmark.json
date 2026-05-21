@@ -1,0 +1,51 @@
+{
+  "skill_name": "reviewer",
+  "iteration": 2,
+  "previous_iteration": 1,
+  "summary": {
+    "with_skill": {
+      "avg_pass_rate": 100.0,
+      "total_passed": 14,
+      "total_assertions": 14
+    },
+    "old_skill": {
+      "avg_pass_rate": 85.7,
+      "total_passed": 12,
+      "total_assertions": 14
+    }
+  },
+  "evals": [
+    {
+      "eval_id": 0,
+      "eval_name": "buggy-code-detection",
+      "with_skill": {
+        "pass_rate": 100.0,
+        "passed": 7,
+        "total": 7,
+        "note": "完整证据链：每条发现含存在性/影响性/触发条件/保护排除4点"
+      },
+      "old_skill": {
+        "pass_rate": 85.7,
+        "passed": 6,
+        "total": 7,
+        "note": "无证据链，检测到更多问题但含冗余项（NULL检查拆成2条）"
+      }
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "concurrency-bug-detection",
+      "with_skill": {
+        "pass_rate": 100.0,
+        "passed": 7,
+        "total": 7,
+        "note": "完整证据链，Phase1特征扫描正确识别并发+内存模式"
+      },
+      "old_skill": {
+        "pass_rate": 85.7,
+        "passed": 6,
+        "total": 7,
+        "note": "无证据链，缺乏结构化扫描"
+      }
+    }
+  ]
+}

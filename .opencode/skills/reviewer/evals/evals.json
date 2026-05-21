@@ -3,29 +3,42 @@
   "evals": [
     {
       "id": 0,
-      "name": "review-current-diff",
-      "prompt": "检视当前代码修改，检查实现质量。重点关注：功能完整性、代码质量、边界情况、一致性",
-      "expected_output": "结构化审核报告，含 Status: PASS/FAIL 和检查清单",
-      "files": ["reviewer-workspace/fixtures/review-sample/"],
+      "name": "dev_v2-review-with-skill",
+      "prompt": "审查 dev_v2/src/case9_mixed_scenario.c、dev_v2/src/ut_sdma_main.c、dev_v2/src/ut_sdma.h 三个文件的代码质量。这些文件是 SDMA 混合场景测试用例的实现，涉及多线程跨进程数据拷贝。重点关注：SDMA API 使用正确性、内存管理、并发安全、输入验证、错误路径清理。",
+      "expected_output": "结构化检视报告，含特征扫描、激活维度、证据链、PASS/FAIL 结论",
+      "files": [
+        "dev_v2/src/case9_mixed_scenario.c",
+        "dev_v2/src/ut_sdma_main.c",
+        "dev_v2/src/ut_sdma.h"
+      ],
       "assertions": [
-        "输出了结构化审核结果（Status + 检查清单格式）",
-        "至少发现 1 个代码质量问题（如缓冲区溢出、内存泄漏、空指针等）",
-        "对每个发现的问题给出了修复建议",
-        "输出格式包含 ## Review Results 和 **Status:** 标记"
+        "检测到 sdma_mixed_thread 中 static int ret 的数据竞争问题（多线程共享静态变量）",
+        "检测到 sdma_alloc_chn/sdma_init_chn 的返回值是否为 NULL 的检查",
+        "检测到 sdma_pin_umem/sdma_unpin_umem 的配对使用和错误路径清理",
+        "检测到 sdma_add_authority 的返回值检查",
+        "检测到 strtol 解析缺少下界检查（如 send_cpu/recv_cpu 负数截断）",
+        "检测到错误路径的 goto 清理是否完整（未漏掉已分配资源）",
+        "每条发现包含 4 点证据链（存在性/影响性/触发条件/保护排除）",
+        "检测维度标注参考 D1-D11 规则编号"
       ]
     },
     {
       "id": 1,
-      "name": "review-code-static",
-      "prompt": "审查这个代码文件，找出所有潜在缺陷和安全隐患",
-      "expected_output": "逐行代码审查，列出每个缺陷的严重等级和修复建议",
-      "files": ["reviewer-workspace/fixtures/review-sample/buggy.c"],
+      "name": "dev_v2-review-baseline",
+      "prompt": "审查 dev_v2/src/case9_mixed_scenario.c、dev_v2/src/ut_sdma_main.c、dev_v2/src/ut_sdma.h 三个文件的代码质量。这些文件是 SDMA 混合场景测试用例的实现，涉及多线程跨进程数据拷贝。重点关注：SDMA API 使用正确性、内存管理、并发安全、输入验证、错误路径清理。",
+      "expected_output": "结构化检视报告，含特征扫描、激活维度、证据链、PASS/FAIL 结论",
+      "files": [
+        "dev_v2/src/case9_mixed_scenario.c",
+        "dev_v2/src/ut_sdma_main.c",
+        "dev_v2/src/ut_sdma.h"
+      ],
       "assertions": [
-        "发现了 strcpy 缓冲区溢出风险",
-        "发现了 create_record 中 malloc 未检查 NULL",
-        "发现了 process_records 中数组越界风险（count > 9）",
-        "发现了 process_records 中内存泄漏（recs 中 data 未释放）",
-        "输出了安全/严重等级分类"
+        "检测到 sdma_mixed_thread 中 static int ret 的数据竞争问题",
+        "检测到 sdma_alloc_chn/sdma_init_chn 的返回值检查",
+        "检测到 sdma_pin_umem/sdma_unpin_umem 的配对使用",
+        "检测到 strtol 解析缺少下界检查",
+        "每条发现包含修复建议",
+        "检测到错误路径的 goto 清理是否完整"
       ]
     }
   ]

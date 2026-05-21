@@ -1,0 +1,39 @@
+{
+  "skill_name": "reviewer",
+  "iteration": 4,
+  "previous_iteration": 3,
+  "summary": {
+    "with_skill": {
+      "avg_pass_rate": 87.5,
+      "total_passed": 7,
+      "total_assertions": 8,
+      "note": "新增检查项 D5-11/D8-11/D11-10 全部生效"
+    },
+    "old_skill": {
+      "avg_pass_rate": 25.0,
+      "total_passed": 2,
+      "total_assertions": 8,
+      "note": "缺失全部新增检测项"
+    }
+  },
+  "evals": [
+    {
+      "eval_id": 0,
+      "eval_name": "dev_v2-optimized",
+      "with_skill": {
+        "pass_rate": 87.5,
+        "passed": 7,
+        "total": 8,
+        "findings": 8,
+        "note": "3个gap全部修复: D8-11线程use-after-free, D5-11 request零值, D11-10逻辑死代码。strtol校验需优化激活策略"
+      },
+      "old_skill": {
+        "pass_rate": 25.0,
+        "passed": 2,
+        "total": 8,
+        "findings": 9,
+        "note": "缺失D5-11/D8-11/D11-10检测，无证据链无维度标注"
+      }
+    }
+  ]
+}

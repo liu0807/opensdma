@@ -1,0 +1,20 @@
+{
+  "eval_id": 0,
+  "eval_name": "dev_v2-optimized",
+  "prompt": "审查 dev_v2/src/case9_mixed_scenario.c、dev_v2/src/ut_sdma_main.c、dev_v2/src/ut_sdma.h 三个文件的代码质量。这些文件是 SDMA 混合场景测试用例的实现，涉及多线程跨进程数据拷贝。重点关注：SDMA API 使用正确性、内存管理、并发安全、输入验证、错误路径清理。",
+  "files": [
+    "dev_v2/src/case9_mixed_scenario.c",
+    "dev_v2/src/ut_sdma_main.c",
+    "dev_v2/src/ut_sdma.h"
+  ],
+  "assertions": [
+    "检测到 sdma_mixed_thread 中 static int ret 的数据竞争（CRITICAL）",
+    "检测到 sdma_pin_umem/sdma_unpin_umem 的配对使用和错误路径清理",
+    "检测到 strtol 解析缺少 errno 校验",
+    "检测到线程 error-path use-after-free（pthread_create 后 goto 未 join）",
+    "检测到 sdma_request_t 零值初始化风险",
+    "检测到逻辑死代码（如 numa_id < 0 永远不成立）",
+    "每条发现包含 4 点证据链",
+    "检测维度标注参考 D1-D11 规则编号"
+  ]
+}
