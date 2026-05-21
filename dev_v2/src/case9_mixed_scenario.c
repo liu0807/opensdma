@@ -116,6 +116,7 @@ static int ready_status_timeout_judgement(bool *ready)
 
     if (ready == NULL) {
         printf("detected NULL!\n");
+        return SDMA_TEST_FAILED;
     }
 
     while (!(*ready) && cnt < TIMEOUT) {
@@ -152,7 +153,7 @@ static void *sdma_mixed_thread(void *arg)
 {
     struct sdma_mixed_th *temp = (struct sdma_mixed_th *)arg;
     cpu_set_t affinity;
-    static int ret = 0;
+    int ret = 0;
     cpu_set_t mask;
 
     CPU_ZERO(&mask);
@@ -171,15 +172,15 @@ static void *sdma_mixed_thread(void *arg)
     ret = ready_status_timeout_judgement(temp->g_barrier);
     if (ret != 0) {
         printf("wait temp->g_barrier timeout \n");
-        return (void *)&ret;
+        return (void *)(intptr_t)ret;
     }
 
     ret = sdma_test(temp->sdma, temp->sqe_task, 0, &temp->request);
     if (ret != 0) {
         printf("sdma_test failed\n");
-        return (void *)&ret;
+        return (void *)(intptr_t)ret;
     }
-    return (void *)&ret;
+    return (void *)(intptr_t)ret;
 }
 
 static int sdma_mem_alloc(char **src_addr, char **dst_addr, int numa_id, int mmap_size)
@@ -319,11 +320,11 @@ static void sdma_mem_release(sdma_sqe_task_t *sqe_task, char *src_addr[], char *
         case MEMORY_TYPE_3:
         case MEMORY_TYPE_4:
             for (k = 0; k < THREAD_NUM; k++) {
-                if (!dst_addr[k]) {
+                if (!dst_addr[k] || dst_addr[k] == MAP_FAILED) {
                     break;
                 }
                 munmap(dst_addr[k], mmap_size);
-                if (!src_addr[k]) {
+                if (!src_addr[k] || src_addr[k] == MAP_FAILED) {
                     break;
                 }
                 munmap(src_addr[k], mmap_size);
@@ -552,7 +553,7 @@ static int mixed_recv(int fd, key_t key, int numa_id)
         }
         for (i = 0; i < THREAD_NUM; i++) {
             if (pthread_ret[i]) {
-                if (*(pthread_ret[i]) != 0) {
+                if ((int)(intptr_t)(pthread_ret[i]) != 0) {
                     printf("[recv] sdma_mixed_thread execute failed!\n");
                     goto unpin_mem_recv;
                 }
@@ -586,7 +587,6 @@ static int mixed_recv(int fd, key_t key, int numa_id)
     for (i = 0; i < 2 * THREAD_NUM; i++) {
         if (sdma_unpin_umem(fd, cookie[i])) {
             printf("[recv] unpin fail!\n");
-            goto release_mem_recv;
         }
     }
     sdma_mem_release(sqe_task, recv_src_addr, recv_dst_addr, sdma, mmap_size);
@@ -595,6 +595,10 @@ static int mixed_recv(int fd, key_t key, int numa_id)
     return ret;
 
 unpin_mem_recv:
+    g_barrier = true;
+    for (i = 0; i < THREAD_NUM; i++) {
+        pthread_join(tid[i], NULL);
+    }
     for (i = 0; i < cookie_num; i++) {
         if (i % DIVIDEND == 0) {
             if (sdma_unpin_umem(fd, cookie[i / DIVIDEND])) {
@@ -816,7 +820,7 @@ static int mixed_send(int fd, key_t key, int numa_id)
     }
     for (i = 0; i < THREAD_NUM; i++) {
         if (pthread_ret[i]) {
-            if (*(pthread_ret[i]) != 0) {
+            if ((int)(intptr_t)(pthread_ret[i]) != 0) {
                 printf("[send] sdma_mixed_thread execute failed!\n");
                 goto unpin_mem_send;
             }
@@ -835,7 +839,6 @@ static int mixed_send(int fd, key_t key, int numa_id)
     for (i = 0; i < 2 * THREAD_NUM; i++) {
         if (sdma_unpin_umem(fd, cookie[i])) {
             printf("[send] unpin fail!\n");
-            goto release_mem_send;
         }
     }
 
@@ -847,6 +850,10 @@ static int mixed_send(int fd, key_t key, int numa_id)
     return ret;
 
 unpin_mem_send:
+    g_barrier = true;
+    for (i = 0; i < THREAD_NUM; i++) {
+        pthread_join(tid[i], NULL);
+    }
     for (i = 0; i < cookie_num; i++) {
         if (i % DIVIDEND == 0) {
             if (sdma_unpin_umem(fd, cookie[i / DIVIDEND])) {
@@ -1000,7 +1007,7 @@ int case9_mixed_scenario(struct sdma_test_input *cmd)
 
     if (i < PROC_NUM) {
         numa_id = CPU0 / CPU_PER_NODE;
-        if (numa_id < 0 || numa_id >= (NUMA_NODE_NUMS / 2)) {
+        if (numa_id >= (NUMA_NODE_NUMS / 2)) {
             printf("numa id %d out of range, now set to 0...\n", numa_id);
             numa_id = 0;
         }
@@ -1008,17 +1015,18 @@ int case9_mixed_scenario(struct sdma_test_input *cmd)
         case_bind_cpu_node(CPU0, numa_id);
         printf("I'm %d child, pid = %u, father pid is %u\n", i + 1, getpid(), getppid());
         printf("child, sdma device num = %d\n", device_num_1);
-        sprintf(sdma_dev, "/dev/sdma%d", device_num_1);
+        snprintf(sdma_dev, sizeof(sdma_dev), "/dev/sdma%d", device_num_1);
         fd1 = open(sdma_dev, O_RDWR);
         if (fd1 < 0) {
             printf("open sdma%d failed!\n", device_num_1);
             return SDMA_TEST_FAILED;
         }
 
-        sprintf(sdma_dev, "/dev/sdma%d", device_num_2);
+        snprintf(sdma_dev, sizeof(sdma_dev), "/dev/sdma%d", device_num_2);
         fd2 = open(sdma_dev, O_RDWR);
         if (fd2 < 0) {
             printf("open sdma%d failed!\n", device_num_2);
+            close(fd1);
             return SDMA_TEST_FAILED;
         }
 
@@ -1032,7 +1040,7 @@ int case9_mixed_scenario(struct sdma_test_input *cmd)
         _exit(0);
     } else {
         numa_id = CPU1 / CPU_PER_NODE;
-        if (numa_id < 0 || numa_id >= (NUMA_NODE_NUMS / 2)) {
+        if (numa_id >= (NUMA_NODE_NUMS / 2)) {
             printf("numa id %d out of range, now set to 0...\n", numa_id);
             numa_id = 0;
         }
@@ -1040,17 +1048,18 @@ int case9_mixed_scenario(struct sdma_test_input *cmd)
         case_bind_cpu_node(CPU1, numa_id);
         printf("I'm parent, pid = %u\n", getpid());
         printf("parent, sdma device num = %d\n", device_num_2);
-        sprintf(sdma_dev, "/dev/sdma%d", device_num_2);
+        snprintf(sdma_dev, sizeof(sdma_dev), "/dev/sdma%d", device_num_2);
         fd3 = open(sdma_dev, O_RDWR);
         if (fd3 < 0) {
             printf("open sdma%d failed!\n", device_num_2);
             return SDMA_TEST_FAILED;
         }
 
-        sprintf(sdma_dev, "/dev/sdma%d", device_num_1);
+        snprintf(sdma_dev, sizeof(sdma_dev), "/dev/sdma%d", device_num_1);
         fd4 = open(sdma_dev, O_RDWR);
         if (fd4 < 0) {
             printf("open sdma%d failed!\n", device_num_1);
+            close(fd3);
             return SDMA_TEST_FAILED;
         }
 
