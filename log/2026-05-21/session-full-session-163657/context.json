@@ -1,0 +1,21 @@
+{
+  "saved_at": "2026-05-21T16:37:02",
+  "branch": "test-ralph",
+  "prd": {
+    "project": "sdma-dk",
+    "branchName": "ralph/add-mixed-scenario-test",
+    "description": "为 sdma tool 新增混合场景测试用例",
+    "userStories": [
+      {"id": "US-001", "title": "创建新测试用例框架", "passes": false},
+      {"id": "US-002", "title": "扩展测试输入结构体", "passes": false},
+      {"id": "US-003", "title": "实现 stride 参数控制", "passes": false},
+      {"id": "US-004", "title": "实现通道类型和线程控制", "passes": false}
+    ]
+  },
+  "progress_txt": null,
+  "skills": ["prd", "ralph", "reviewer", "skill-creator", "sdma-tool-compile", "git-push", "worklog"],
+  "git": {
+    "last_commit": "6b85018 enhance reviewer skill with references-based rules and 4 iterations of evaluation",
+    "working_tree": "clean (untracked: .opencode/skills/worklog/)"
+  }
+}

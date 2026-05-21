@@ -1,0 +1,16 @@
+{
+  "branch": "test-ralph",
+  "saved_at": "2026-05-21T16:37:02",
+  "recent_commits": [
+    "6b85018 enhance reviewer skill with references-based rules and 4 iterations of evaluation",
+    "2dba30b 编译后自动创建 bin/README.md 记录二进制依赖",
+    "fdd670b 修复 sdma_tool glibc 版本兼容问题 + 更新编译技能文档",
+    "89e2b06 创建 sdma-tool-compile 和 git-push 技能",
+    "eff8b34 修改优化prd、ralph等原有skills",
+    "2b9c4ab 创建skill-ctreator+修改AGENT.md",
+    "eb36c20 添加agent完成本地编译工程的过程日志记录",
+    "9cf6751 修改共享内存ker生成逻辑+脚本添加进程等待",
+    "dc584fe 修改新case mmap_size的计算逻辑，在stride模式下动态分配足够大的内存",
+    "6c0fa65 修改脚本传参及删除线程数边界测试"
+  ]
+}
