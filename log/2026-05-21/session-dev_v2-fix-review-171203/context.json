@@ -1,0 +1,35 @@
+{
+  "prd.json": {
+    "project": "sdma-dk",
+    "branchName": "ralph/add-mixed-scenario-test",
+    "description": "为 sdma tool 新增混合场景测试用例，通过新增参数控制 stride、通道类型和线程数量",
+    "userStories": [
+      {
+        "id": "US-001",
+        "title": "创建新测试用例框架",
+        "description": "作为开发者，我需要创建 case9_mixed_scenario.c，基于 case_muti_direction.c 但只有 send 和 recv 两个进程，每个进程创建线程下发任务，线程一一对应。",
+        "priority": 1,
+        "passes": false
+      },
+      {
+        "id": "US-002",
+        "title": "扩展测试输入结构体",
+        "priority": 2,
+        "passes": false
+      },
+      {
+        "id": "US-003",
+        "title": "实现 stride 参数控制",
+        "priority": 3,
+        "passes": false
+      },
+      {
+        "id": "US-004",
+        "title": "实现通道类型和线程控制",
+        "priority": 4,
+        "passes": false
+      }
+    ]
+  },
+  "progress.txt": null
+}
