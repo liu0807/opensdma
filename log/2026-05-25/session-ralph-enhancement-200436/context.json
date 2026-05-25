@@ -1,0 +1,17 @@
+{
+  "prd.json": {
+    "project": "sdma-dk",
+    "branchName": "ralph/add-mixed-scenario-test",
+    "description": "为 sdma tool 新增混合场景测试用例",
+    "userStories": [
+      {"id": "US-001", "title": "创建新测试用例框架", "priority": 1, "passes": false},
+      {"id": "US-002", "title": "扩展测试输入结构体", "priority": 2, "passes": false},
+      {"id": "US-003", "title": "实现 stride 参数控制", "priority": 3, "passes": false},
+      {"id": "US-004", "title": "实现通道类型和线程控制", "priority": 4, "passes": false}
+    ]
+  },
+  "progress.txt": null,
+  "modified_skills": [
+    ".opencode/skills/ralph/skill.md"
+  ]
+}

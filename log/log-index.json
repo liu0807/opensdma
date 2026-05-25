@@ -1,20 +1,28 @@
 ﻿{
-  "sessions": [
-    {
-      "date": "2026-05-21",
-      "time": "16:36:57",
-      "tag": "full-session",
-      "path": "log/2026-05-21/session-full-session-163657",
-      "summary": "reviewer 技能增强（迭代1-4）+ worklog 技能创建",
-      "branch": "test-ralph"
-    },
-    {
-      "date": "2026-05-21",
-      "time": "17:12:03",
-      "tag": "dev_v2-fix-review",
-      "path": "log/2026-05-21/session-dev_v2-fix-review-171203",
-      "summary": "dev_v2 代码修复 + reviewer 审查循环",
-      "branch": "test-ralph"
-    }
-  ]
+    "sessions":  [
+                     {
+                         "date":  "2026-05-21",
+                         "time":  "16:36:57",
+                         "tag":  "full-session",
+                         "path":  "log/2026-05-21/session-full-session-163657",
+                         "summary":  "reviewer 技能增强（迭代1-4）+ worklog 技能创建",
+                         "branch":  "test-ralph"
+                     },
+                     {
+                         "date":  "2026-05-21",
+                         "time":  "17:12:03",
+                         "tag":  "dev_v2-fix-review",
+                         "path":  "log/2026-05-21/session-dev_v2-fix-review-171203",
+                         "summary":  "dev_v2 代码修复 + reviewer 审查循环",
+                         "branch":  "test-ralph"
+                     },
+                     {
+                         "tag":  "ralph-enhancement",
+                         "branch":  "test-ralph",
+                         "path":  "log/2026-05-25/session-ralph-enhancement-200436",
+                         "date":  "2026-05-25",
+                         "summary":  "ralph 技能增强：每步成功即提交 + git diff 驱动上下文",
+                         "time":  "20:04:36"
+                     }
+                 ]
 }

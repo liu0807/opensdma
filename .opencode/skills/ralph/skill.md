@@ -24,6 +24,7 @@ Ralph Loop 是一个自主开发循环系统，通过多次迭代完成 PRD 中�
 2. **状态文件是唯一桥梁** - 迭代之间只通过 prd.json、progress.txt、git history 交流
 3. **一次一个故事** - 每轮迭代只处理一个用户故事
 4. **独立检视** - 每轮完成后由独立检视 agent 审查代码，通过才进入下一轮
+5. **每步成功即提交** - 每个步骤（实现、修复）成功后立即 `git commit`，为下一轮提供精确的变更差分，同时提供版本回滚能力
 
 ## 前置条件检查
 
@@ -77,23 +78,31 @@ WHILE 迭代计数 <= 最大迭代次数:
      任务内容: 见下方"Ralph Agent 任务指令"
      （不指定 task_id，确保全新上下文）
   
-  3. 等待 Ralph agent 完成
-  
-  4. **启动检视流程**
-     加载 reviewer skill
-     执行检视循环：
-       - 启动检视 agent
-       - 如果通过 → 继续
-       - 如果不通过 → 启动修复 agent → 重新检视（最多 3 次）
-       - 如果仍不通过 → 记录问题，强制通过（或跳过该故事）
-  
-  5. 检查状态:
-     - 读取 prd.json 查看故事是否标记为 passes: true
-     - 读取 progress.txt 查看进度记录
-  
-  6. 汇报: "✓ 完成 US-XXX: 标题 (迭代 X) - 检视通过"
-  
-  7. 迭代计数 += 1
+   3. 等待 Ralph agent 完成
+
+   4. **验证提交并获取差分**
+      - 运行 `git log -1 --oneline` 确认子 agent 已提交（格式：`US-XXX: <标题>`）
+      - 如果无提交（子 agent 异常），记录警告到 progress.txt
+      - 运行 `git diff HEAD~1..HEAD --stat` 获取变更文件列表，供检视 agent 使用
+
+   5. **启动检视流程**
+      加载 reviewer skill
+      执行检视循环：
+        - 启动检视 agent
+        - 如果通过 → 继续
+        - 如果不通过 → 启动修复 agent
+           修复完成后 → 执行 `git add -A && git commit -m "US-XXX: fix review issues (迭代 X)"`
+           重新检视（最多 3 次）
+        - 如果仍不通过 → 记录问题，强制通过（或跳过该故事）
+   
+   6. 检查状态:
+      - 读取 prd.json 查看故事是否标记为 passes: true
+      - 读取 progress.txt 查看进度记录
+   
+   7. 汇报: "✓ 完成 US-XXX: 标题 (迭代 X) - 检视通过"
+      - 同时汇报本轮产生的 commits：`git log --oneline -2`
+   
+   8. 迭代计数 += 1
   
 END WHILE
 
@@ -114,6 +123,22 @@ END WHILE
   - prd.json（任务列表和状态）
   - progress.txt（学习历史，重点关注 Codebase Patterns 部分）
   - git log（之前的提交）
+  - **git diff**（上一轮的精确变更差分——客观了解当前代码现状的关键）
+
+### 如何获取上一轮变更差分
+
+```
+# 查看最近的提交
+git log --oneline -5
+
+# 查看上一轮变更了哪些文件
+git diff HEAD~1..HEAD --stat
+
+# 查看具体变更内容
+git diff HEAD~1..HEAD
+```
+
+**如果当前是第一次迭代，没有 HEAD~1**：使用 `git diff --cached` 或 `git diff` 查看工作区变更。
 
 ## 你的任务
 
@@ -122,24 +147,30 @@ END WHILE
    - 读取 progress.txt，重点关注 "## Codebase Patterns" 部分
    - 确认当前 git 分支与 prd.json 中的 branchName 一致
 
-2. **实现故事**
-   - 根据故事的 description 和 acceptanceCriteria 实现功能
-   - 只实现这一个故事，不要做其他事
-   - 遵循现有代码模式
-   - 如有浏览器验证要求，使用可用工具验证
+ 2. **实现故事**
+    - 根据故事的 description 和 acceptanceCriteria 实现功能
+    - 只实现这一个故事，不要做其他事
+    - 遵循现有代码模式
+    - 如有浏览器验证要求，使用可用工具验证
 
-3. **更新状态文件**
-   - 更新 prd.json：将该故事的 passes 设为 true
-   - 追加进度到 progress.txt（格式见下）
+ 3. **更新状态文件**
+    - 更新 prd.json：将该故事的 passes 设为 true
+    - 追加进度到 progress.txt（格式见下）
 
-4. **更新 AGENTS.md（可选）**
-   - 如果发现可复用模式，更新相关目录的 AGENTS.md
-   - 只添加通用知识，不是故事特定细节
+ 4. **提交代码变更（关键步骤）**
+    - 运行 `git add -A` 暂存所有变更
+    - 运行 `git commit -m "US-XXX: <故事标题> (迭代 N)"`
+    - 如果 commit 失败（空提交），说明无实际变更，检查原因
+    - **提交目的**：为下一轮迭代提供精确的 `git diff`，让新 agent 能客观评估现状；同时提供版本回滚点
 
-5. **检查停止条件**
-   - 检查 prd.json 中所有故事的 passes 字段
-   - 如果全部为 true，在你的回复中输出：<promise>COMPLETE</promise>
-   - 否则，正常结束即可
+ 5. **更新 AGENTS.md（可选）**
+    - 如果发现可复用模式，更新相关目录的 AGENTS.md
+    - 只添加通用知识，不是故事特定细节
+
+ 6. **检查停止条件**
+    - 检查 prd.json 中所有故事的 passes 字段
+    - 如果全部为 true，在你的回复中输出：<promise>COMPLETE</promise>
+    - 否则，正常结束即可
 
 ## 进度记录格式（追加到 progress.txt）
 
@@ -168,6 +199,29 @@ END WHILE
 - 保持改动最小化
 - 你完成后会被关闭，下一个迭代会启动新的 agent
 ```
+
+## Git 差分驱动上下文
+
+每次迭代开始前，Ralph agent 通过 git diff 客观评估当前状态：
+
+```
+1. 读取 prd.json → 找到当前故事
+2. 读取 progress.txt → 了解历史和模式
+3. 运行 git log --oneline -5 → 查看最近的提交历史
+4. 运行 git diff HEAD~1..HEAD --stat → 查看上一轮变更了哪些文件
+5. 运行 git diff HEAD~1..HEAD -- <相关文件> → 逐行查看具体变更内容
+```
+
+**为什么使用 git diff 而非重新读文件**：
+- 许多变更（重构、格式化、删除代码）在重新读取的文件中不可见
+- git diff 精确显示"之前 vs 之后"，让新 agent 立即理解上下文
+- 避免新 agent 从头理解整个文件，聚焦本轮实际变更
+
+**Ralph agent 应在以下场景主动使用 git diff**：
+- 理解上一轮迭代做了什么
+- 评估哪些文件被修改了
+- 识别需要继续完善或已完成的代码区域
+- 发现未在 progress.txt 中记录的隐性变更
 
 ## 进度汇报格式
 
@@ -200,9 +254,13 @@ END WHILE
     ↓
 [实现故事] → [更新 prd.json] → [记录 progress.txt]
     ↓
-[检视 Agent] → 通过？ → 是 → [下一轮迭代 N+1]
+[git commit: "US-XXX: <标题> (迭代 N)"]
+    ↓
+[检视 Agent] → 通过？ → 是 → [验证提交] → [下一轮迭代 N+1]
     ↓ 否
-[修复 Agent] → [重新检视] → 通过？ → 是 → [下一轮迭代 N+1]
+[修复 Agent] → [修复代码] → [git commit: "US-XXX: fix (迭代 N)"]
+    ↓
+[重新检视] → 通过？ → 是 → [下一轮迭代 N+1]
     ↓ 否（3次后）
 [记录问题] → [强制通过/跳过] → [下一轮迭代 N+1]
 ```
@@ -214,7 +272,7 @@ END WHILE
 | 每次迭代全新上下文 | ✓ bash 循环启动新进程 | ✓ task 工具启动新子 agent |
 | 状态文件传递 | ✓ prd.json/progress.txt/git | ✓ 相同 |
 | 单次迭代执行 | ✓ 一个故事 | ✓ 一个故事 |
-| 代码提交 | ✓ git commit | ✗ 不涉及 |
+| 代码提交 | ✓ git commit | ✓ 每步成功即提交 |
 | 质量检查 | ✓ agent 内部检查 | ✓ 独立检视 agent |
 | 检视时机 | 提交前 | 迭代后 |
 | 修复流程 | 无 | ✓ 检视 → 修复 → 重新检视 |
